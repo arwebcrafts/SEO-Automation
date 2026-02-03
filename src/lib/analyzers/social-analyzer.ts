@@ -134,44 +134,51 @@ export function analyzeSocial(data: PageData): CategoryResult {
       : "No Twitter image found",
   });
 
-  // 9. Facebook Link
+  // Check for any social links first (to determine if we should warn or just recommend)
   const hasFacebookLink = data.html.includes("facebook.com/") && !data.html.includes("facebook.com/sharer");
+  const hasTwitterLink = data.html.includes("twitter.com/") || data.html.includes("x.com/");
+  const hasInstagramLink = data.html.includes("instagram.com/");
+  const hasLinkedInLink = data.html.includes("linkedin.com/");
+  const hasYouTubeLink = data.html.includes("youtube.com/") || data.html.includes("youtu.be/");
+  
+  // If at least one social link exists, don't show warnings for missing ones - just recommendations
+  const hasAnySocialLink = hasFacebookLink || hasTwitterLink || hasInstagramLink || hasLinkedInLink || hasYouTubeLink;
+
+  // 9. Facebook Link
   const facebookLink = $('a[href*="facebook.com/"]:not([href*="sharer"])').attr("href") || "";
   checks.push({
     id: "hasFacebook",
     name: "Facebook Page Link",
-    status: hasFacebookLink ? "pass" : "warning",
-    score: hasFacebookLink ? 100 : 40,
+    status: hasFacebookLink ? "pass" : (hasAnySocialLink ? "info" : "warning"),
+    score: hasFacebookLink ? 100 : (hasAnySocialLink ? 70 : 40),
     weight: 8,
     value: { url: facebookLink, found: hasFacebookLink },
     message: hasFacebookLink
       ? `Facebook page linked: ${facebookLink.slice(0, 50)}`
       : "No Facebook page link found",
     recommendation: !hasFacebookLink
-      ? "Create and link your Facebook Page"
+      ? "Consider adding a Facebook Page link"
       : undefined,
   });
 
   // 10. Twitter/X Link
-  const hasTwitterLink = data.html.includes("twitter.com/") || data.html.includes("x.com/");
   const twitterLink = $('a[href*="twitter.com/"], a[href*="x.com/"]').not('[href*="intent"]').attr("href") || "";
   checks.push({
     id: "hasTwitter",
     name: "X (Twitter) Profile Link",
-    status: hasTwitterLink ? "pass" : "warning",
-    score: hasTwitterLink ? 100 : 40,
+    status: hasTwitterLink ? "pass" : (hasAnySocialLink ? "info" : "warning"),
+    score: hasTwitterLink ? 100 : (hasAnySocialLink ? 70 : 40),
     weight: 8,
     value: { url: twitterLink, found: hasTwitterLink },
     message: hasTwitterLink
       ? `X profile linked: ${twitterLink.slice(0, 50)}`
       : "No X (Twitter) profile link found",
     recommendation: !hasTwitterLink
-      ? "Create and link your X Profile"
+      ? "Consider adding an X Profile link"
       : undefined,
   });
 
   // 11. Instagram Link
-  const hasInstagramLink = data.html.includes("instagram.com/");
   const instagramLink = $('a[href*="instagram.com/"]').attr("href") || "";
   checks.push({
     id: "hasInstagram",
@@ -189,7 +196,6 @@ export function analyzeSocial(data: PageData): CategoryResult {
   });
 
   // 12. LinkedIn Link
-  const hasLinkedInLink = data.html.includes("linkedin.com/");
   const linkedinLink = $('a[href*="linkedin.com/"]').attr("href") || "";
   checks.push({
     id: "hasLinkedIn",
@@ -207,7 +213,6 @@ export function analyzeSocial(data: PageData): CategoryResult {
   });
 
   // 13. YouTube Link
-  const hasYouTubeLink = data.html.includes("youtube.com/") || data.html.includes("youtu.be/");
   const youtubeLink = $('a[href*="youtube.com/"], a[href*="youtu.be/"]').attr("href") || "";
   checks.push({
     id: "hasYoutube",

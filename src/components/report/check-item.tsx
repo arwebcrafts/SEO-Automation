@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X, AlertTriangle, Info, ChevronDown, ChevronUp, ExternalLink, Shield, Zap, Link2, FileText, Globe, Eye } from "lucide-react";
+import { Check, X, AlertTriangle, Info, ChevronDown, ChevronUp, ExternalLink, Shield, Zap, Link2, FileText, Globe, Eye, Loader2, Wrench, Copy, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { VerificationModal } from "./verification-modal";
@@ -8,6 +8,258 @@ import { GoogleSearchPreview } from "./google-search-preview";
 import { KeywordConsistencyTable } from "./keyword-consistency-table";
 import { HeaderHierarchy } from "./header-hierarchy";
 import { useViewMode, TECHNICAL_CHECKS } from "./view-mode-toggle";
+
+// Map check IDs to WordPress fix actions for per-page fixes
+const checkToFixAction: Record<string, { action: string; label: string }> = {
+  "meta-description": { action: "fix_meta_page", label: "Fix Meta" },
+  "metaDescription": { action: "fix_meta_page", label: "Fix Meta" },
+  "title-tag": { action: "fix_title_page", label: "Fix Title" },
+  "title": { action: "fix_title_page", label: "Fix Title" },
+  "image-alt": { action: "fix_alt_text_page", label: "Fix Alt" },
+  "imageAlt": { action: "fix_alt_text_page", label: "Fix Alt" },
+  "headingStructure": { action: "fix_headings_page", label: "Fix Headings" },
+  "heading-structure": { action: "fix_headings_page", label: "Fix Headings" },
+  "canonical-tag": { action: "fix_canonical_page", label: "Fix Canonical" },
+  "canonicalUrl": { action: "fix_canonical_page", label: "Fix Canonical" },
+  // Keywords and content checks - show recommendation only (no auto-fix)
+  "keywordPlacement": { action: "fix_keywords_page", label: "View Tips" },
+  "keyword-placement": { action: "fix_keywords_page", label: "View Tips" },
+  "keywordConsistency": { action: "fix_keywords_page", label: "View Tips" },
+  // Broken links - show recommendation
+  "brokenLinks": { action: "fix_broken_links_page", label: "View Links" },
+  "broken-links": { action: "fix_broken_links_page", label: "View Links" },
+};
+
+// Per-Page Fix Button Component with AI-powered issue analysis
+interface PerPageFixButtonProps {
+  checkId: string;
+  pageUrl: string;
+  pagePathname: string;
+  finding: {
+    status: string;
+    score: number;
+    value: Record<string, unknown>;
+    message: string;
+  };
+  onFixed?: (result: PerPageFixResult) => void;
+}
+
+interface PerPageFixResult {
+  success: boolean;
+  message?: string;
+  pageUrl?: string;
+  aiSuggestion?: string;
+  fixApplied?: boolean;
+}
+
+function PerPageFixButton({ checkId, pageUrl, pagePathname, finding, onFixed }: PerPageFixButtonProps) {
+  const [fixing, setFixing] = useState(false);
+  const [result, setResult] = useState<PerPageFixResult | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const fixInfo = checkToFixAction[checkId];
+  if (!fixInfo) return null;
+  
+  // Only show fix button for issues (not passed checks)
+  if (finding.status === 'pass' && finding.score >= 80) return null;
+
+  const handlePerPageFix = async () => {
+    const saved = localStorage.getItem('wp_connection_global');
+    if (!saved) {
+      setResult({ success: false, message: "No WordPress connection" });
+      return;
+    }
+
+    const { siteUrl, apiKey } = JSON.parse(saved);
+    setFixing(true);
+    setResult(null);
+
+    // Generate AI-powered fix suggestion based on the issue
+    const aiSuggestion = generateAISuggestion(checkId, finding);
+    
+    console.log(`%c[PerPageFix] Starting fix for: ${pagePathname}`, 'color: #4CAF50; font-weight: bold');
+    console.log(`[PerPageFix] Check ID: ${checkId}`);
+    console.log(`[PerPageFix] Page URL: ${pageUrl}`);
+    console.log(`[PerPageFix] Issue Details:`, finding.value);
+    console.log(`[PerPageFix] AI Suggestion:`, aiSuggestion);
+
+    try {
+      const requestBody = {
+        site_url: siteUrl,
+        api_key: apiKey,
+        action: fixInfo.action,
+        options: {
+          page_url: pageUrl,
+          page_pathname: pagePathname,
+          check_id: checkId,
+          current_value: finding.value,
+          issue_message: finding.message,
+          ai_suggestion: aiSuggestion,
+          score: finding.score,
+        }
+      };
+
+      console.log(`%c[PerPageFix] Request to WordPress:`, 'color: #2196F3; font-weight: bold');
+      console.log(JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch("/api/wordpress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+      
+      console.log(`%c[PerPageFix] Response from WordPress:`, 'color: #9C27B0; font-weight: bold');
+      console.log(`[PerPageFix] Status: ${response.status}`);
+      console.log(JSON.stringify(data, null, 2));
+
+      const fixResult: PerPageFixResult = {
+        success: data.success || response.ok,
+        message: data.message || (data.success ? 'Fix applied' : 'Fix failed'),
+        pageUrl,
+        aiSuggestion,
+        fixApplied: data.fixed > 0 || data.success,
+      };
+
+      setResult(fixResult);
+      onFixed?.(fixResult);
+    } catch (error) {
+      console.error(`%c[PerPageFix] Error:`, 'color: #F44336; font-weight: bold', error);
+      setResult({ success: false, message: "Fix failed - check connection" });
+    } finally {
+      setFixing(false);
+    }
+  };
+
+  // Generate AI suggestion based on issue type and current values
+  function generateAISuggestion(checkId: string, finding: { value: Record<string, unknown>; message: string }): string {
+    const value = finding.value;
+    
+    switch (checkId) {
+      case 'title':
+      case 'title-tag': {
+        const currentTitle = value.title as string || '';
+        const length = value.length as number || currentTitle.length;
+        if (length < 30) {
+          return `Title is too short (${length} chars). Expand to include primary keyword and make it compelling. Optimal: 30-60 chars. Suggestion: Add descriptive words about the page content.`;
+        } else if (length > 60) {
+          return `Title is too long (${length} chars). Shorten while keeping the main keyword at the start. Optimal: 30-60 chars. Current: "${currentTitle.substring(0, 50)}..."`;
+        }
+        return `Optimize title for SEO. Current: "${currentTitle}"`;
+      }
+      
+      case 'meta-description':
+      case 'metaDescription': {
+        const desc = value.description as string || '';
+        const length = value.length as number || desc.length;
+        if (length === 0) {
+          return `No meta description found. Generate a compelling 120-160 character description that includes the main keyword and a call to action.`;
+        } else if (length < 120) {
+          return `Meta description too short (${length} chars). Expand to 120-160 chars with more detail about page content.`;
+        } else if (length > 160) {
+          return `Meta description too long (${length} chars). Shorten to 120-160 chars, keeping the most important info first.`;
+        }
+        return `Optimize meta description. Current length: ${length} chars.`;
+      }
+      
+      case 'headingStructure':
+      case 'heading-structure': {
+        const h1Count = value.h1 as number || 0;
+        const h2Count = value.h2 as number || 0;
+        const h3Count = value.h3 as number || 0;
+        if (h1Count === 0) {
+          return `Missing H1 tag. Add a single H1 with the primary keyword.`;
+        } else if (h1Count > 1) {
+          return `Multiple H1 tags found (${h1Count}). Convert extra H1s to H2. Only one H1 per page.`;
+        }
+        if (h3Count === 0 && h2Count > 3) {
+          return `No H3 tags found. Add H3 subheadings to break up content under H2 sections.`;
+        }
+        return `Heading structure: H1=${h1Count}, H2=${h2Count}, H3=${h3Count}. Consider adding more subheadings.`;
+      }
+      
+      case 'image-alt':
+      case 'imageAlt': {
+        const missing = value.missingAlt as number || value.imagesWithoutAlt as number || 0;
+        return `${missing} images missing alt text. Generate descriptive alt text for each image describing its content.`;
+      }
+      
+      default:
+        return `Fix ${checkId} issue. Current: ${finding.message}`;
+    }
+  }
+
+  if (result) {
+    return (
+      <div className="relative inline-flex">
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 text-[10px] rounded-md border transition-colors",
+            result.success
+              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+              : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+          )}
+        >
+          {result.success ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+          {result.success ? 'Fixed' : 'Failed'}
+        </button>
+        {expanded && (
+          <div className="absolute top-full left-0 mt-1 z-20 p-2 bg-white dark:bg-slate-800 border rounded-lg shadow-lg text-[10px] min-w-[200px] max-w-[300px]">
+            <p className={result.success ? "text-green-600" : "text-red-600"}>{result.message}</p>
+            {result.aiSuggestion && (
+              <p className="mt-1 text-slate-500 italic">{result.aiSuggestion}</p>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); setResult(null); }}
+              className="mt-2 text-blue-600 hover:underline"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); handlePerPageFix(); }}
+      disabled={fixing}
+      className="flex items-center gap-1 px-2 py-1 text-[10px] bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-md hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 transition-all font-medium"
+      title={`Fix this issue on ${pagePathname}`}
+    >
+      {fixing ? (
+        <Loader2 className="w-3 h-3 animate-spin" />
+      ) : (
+        <Wrench className="w-3 h-3" />
+      )}
+      {fixing ? 'Fixing...' : fixInfo.label}
+    </button>
+  );
+}
+
+// Expandable Text Component - fixes text truncation issue
+function ExpandableText({ text, maxLength = 100, className }: { text: string; maxLength?: number; className?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!text || text.length <= maxLength) {
+    return <span className={className}>{text}</span>;
+  }
+  
+  return (
+    <span className={className}>
+      {expanded ? text : text.substring(0, maxLength) + '...'}
+      <button
+        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        className="ml-1 text-blue-600 hover:underline text-[10px] font-medium"
+      >
+        {expanded ? 'Show less' : 'Show more'}
+      </button>
+    </span>
+  );
+}
 
 interface PerPageFinding {
   url: string;
@@ -218,6 +470,32 @@ export function CheckItem({ id, name, status, message, value, forceShow, sourceP
                 
                 // Handle different value types
                 if (typeof val === 'boolean') {
+                  // Skip confusing technical security headers - users don't need to see these
+                  const skipTechTerms = ['hasHsts', 'hasCsp', 'hasXFrameOptions', 'hasXContentTypeOptions', 'hasReferrerPolicy'];
+                  if (skipTechTerms.includes(key)) return null;
+                  
+                  // Improve URL Structure display with better labels
+                  const urlStructureLabels: Record<string, { good: string; bad: string }> = {
+                    'hasUnderscores': { good: '✓ No underscores in URL', bad: '✗ Contains underscores' },
+                    'hasUppercase': { good: '✓ Lowercase URL', bad: '✗ Contains uppercase' },
+                    'hasParameters': { good: '✓ Clean URL (no parameters)', bad: '✗ Has URL parameters' },
+                    'hasFileExtension': { good: '✓ No file extension', bad: '✗ Has file extension' },
+                  };
+                  
+                  const urlLabel = urlStructureLabels[key];
+                  if (urlLabel) {
+                    // For URL structure, false is usually good (no underscores = good)
+                    const isGood = !val;
+                    return (
+                      <div key={key} className="flex items-center gap-2 text-xs p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <span className={cn("w-5 h-5 rounded-full flex items-center justify-center", isGood ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-600")}>
+                          {isGood ? <Check className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                        </span>
+                        <span className="font-medium text-slate-600 dark:text-slate-400">{isGood ? urlLabel.good : urlLabel.bad}</span>
+                      </div>
+                    );
+                  }
+                  
                   return (
                     <div key={key} className="flex items-center gap-2 text-xs p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                       <span className={cn("w-5 h-5 rounded-full flex items-center justify-center", val ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600")}>
@@ -333,25 +611,42 @@ export function CheckItem({ id, name, status, message, value, forceShow, sourceP
                               <ExternalLink className="w-3 h-3" />
                               {finding.pathname}
                             </a>
-                            <span className="flex items-center gap-1">
-                              {statusIcons[finding.status as keyof typeof statusIcons]}
-                              <span className="font-medium">{finding.score}/100</span>
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {/* Per-page fix button */}
+                              <PerPageFixButton
+                                checkId={id}
+                                pageUrl={finding.url}
+                                pagePathname={finding.pathname}
+                                finding={{
+                                  status: finding.status,
+                                  score: finding.score,
+                                  value: finding.value,
+                                  message: finding.message,
+                                }}
+                              />
+                              <span className="flex items-center gap-1">
+                                {statusIcons[finding.status as keyof typeof statusIcons]}
+                                <span className="font-medium">{finding.score}/100</span>
+                              </span>
+                            </div>
                           </div>
                           <p className="text-slate-600 dark:text-slate-400 mb-2">{finding.message}</p>
                           {finding.value && Object.keys(finding.value).length > 0 && (
-                            <div className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                              {Object.entries(finding.value).slice(0, 6).map(([key, val]) => {
+                            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                              {Object.entries(finding.value).slice(0, 8).map(([key, val]) => {
                                 if (val === null || val === undefined || key === 'recommendation' || key === 'htmlSnippet') return null;
                                 const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                                const isLongText = typeof val === 'string' && val.length > 50;
                                 return (
-                                  <div key={key} className="flex items-center justify-between">
-                                    <span className="text-slate-500 dark:text-slate-500 truncate">{formattedKey}:</span>
-                                    <span className="font-medium text-slate-700 dark:text-slate-300 ml-1">
+                                  <div key={key} className={cn("flex flex-col", isLongText && "col-span-2")}>
+                                    <span className="text-slate-500 dark:text-slate-500 text-[10px] font-medium">{formattedKey}:</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">
                                       {typeof val === 'boolean' ? (val ? '✓' : '✗') : 
                                        typeof val === 'number' ? val : 
-                                       typeof val === 'string' ? (val.length > 30 ? val.substring(0, 30) + '...' : val) : 
-                                       JSON.stringify(val).substring(0, 30)}
+                                       typeof val === 'string' ? (
+                                         <ExpandableText text={val} maxLength={isLongText ? 100 : 50} />
+                                       ) : 
+                                       JSON.stringify(val).substring(0, 50)}
                                     </span>
                                   </div>
                                 );
@@ -432,6 +727,7 @@ export function CheckItem({ id, name, status, message, value, forceShow, sourceP
                 "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
               )}>
                 {status === "fail" ? "Issue" : "Warning"}
+                {perPageFindings && perPageFindings.length > 1 && ` (${perPageFindings.filter(f => f.status !== 'pass').length} pages)`}
               </span>
             )}
             {status === "pass" && (

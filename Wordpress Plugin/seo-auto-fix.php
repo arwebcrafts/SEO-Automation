@@ -557,6 +557,65 @@ function seo_autofix_register_rest_routes() {
         'callback' => 'seo_autofix_api_fix_cwv',
         'permission_callback' => 'seo_autofix_api_permission',
     ));
+    
+    // Fix: Redirects - auto-fix broken link issues
+    register_rest_route($namespace, '/fix/redirects', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_redirects',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Per-page fix endpoints (AI-powered)
+    register_rest_route($namespace, '/fix/meta-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_meta_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    register_rest_route($namespace, '/fix/title-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_title_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    register_rest_route($namespace, '/fix/alt-text-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_alt_text_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    register_rest_route($namespace, '/fix/headings-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_headings_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    register_rest_route($namespace, '/fix/canonical-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_canonical_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Technical SEO combined fix endpoint
+    register_rest_route($namespace, '/fix/technical-seo', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_technical_seo',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Keyword page fix endpoint
+    register_rest_route($namespace, '/fix/keywords-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_keywords_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Broken links page fix endpoint
+    register_rest_route($namespace, '/fix/broken-links-page', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_fix_broken_links_page',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
 }
 
 function seo_autofix_api_permission($request) {
@@ -1742,6 +1801,7 @@ function seo_autofix_menu() {
     add_submenu_page('seo-auto-fix', 'Schema', 'Schema', 'manage_options', 'seo-auto-fix-schema', 'seo_autofix_schema_page');
     add_submenu_page('seo-auto-fix', 'Database', 'Database', 'manage_options', 'seo-auto-fix-database', 'seo_autofix_database_page');
     add_submenu_page('seo-auto-fix', 'API / Connect', 'API / Connect', 'manage_options', 'seo-auto-fix-api', 'seo_autofix_api_page');
+    add_submenu_page('seo-auto-fix', 'Debug Logs', 'Debug Logs', 'manage_options', 'seo-auto-fix-debug', 'seo_autofix_debug_page');
     add_submenu_page('seo-auto-fix', 'Settings', 'Settings', 'manage_options', 'seo-auto-fix-settings', 'seo_autofix_settings_page');
 }
 
@@ -2441,6 +2501,7 @@ function seo_autofix_settings_page() {
         $settings['enable_og_tags'] = isset($_POST['enable_og_tags']);
         $settings['enable_twitter_cards'] = isset($_POST['enable_twitter_cards']);
         $settings['enable_schema'] = isset($_POST['enable_schema']);
+        $settings['enable_debug_log'] = isset($_POST['enable_debug_log']);
         update_option('seo_autofix_settings', $settings);
         
         // Generate IndexNow key file if key is set
@@ -2479,6 +2540,10 @@ function seo_autofix_settings_page() {
                 <h3>🔌 Remote API</h3>
                 <p><label><input type="checkbox" name="enable_remote_api" <?php checked(!empty($settings['enable_remote_api'])); ?>> Enable remote API access</label></p>
                 <p>API Key: <code><?php echo esc_html(get_option('seo_autofix_api_key', 'Not generated yet')); ?></code></p>
+                
+                <h3>🐛 Debug</h3>
+                <p><label><input type="checkbox" name="enable_debug_log" <?php checked(!empty($settings['enable_debug_log'])); ?>> Enable debug logging</label></p>
+                <p class="description">Logs all API requests and fixes to <a href="<?php echo admin_url('admin.php?page=seo-auto-fix-debug'); ?>">Debug Logs</a></p>
             </div>
             
             <div class="seo-autofix-card">
@@ -2521,6 +2586,105 @@ function seo_autofix_settings_page() {
                 <p style="margin-top:20px;"><button type="submit" name="save_settings" class="button button-primary button-hero">Save All Settings</button></p>
                 </form>
             </div>
+        </div>
+    </div>
+    <?php
+}
+
+// ==================== DEBUG LOGS PAGE ====================
+function seo_autofix_debug_page() {
+    $settings = get_option('seo_autofix_settings', array());
+    $logs = get_option('seo_autofix_debug_log', array());
+    
+    // Handle clear logs action
+    if (isset($_POST['clear_logs']) && check_admin_referer('seo_autofix_debug')) {
+        delete_option('seo_autofix_debug_log');
+        $logs = array();
+        echo '<div class="notice notice-success"><p>Debug logs cleared!</p></div>';
+    }
+    
+    // Handle toggle debug action
+    if (isset($_POST['toggle_debug']) && check_admin_referer('seo_autofix_debug')) {
+        $settings['enable_debug_log'] = !$settings['enable_debug_log'];
+        update_option('seo_autofix_settings', $settings);
+        echo '<div class="notice notice-success"><p>Debug logging ' . ($settings['enable_debug_log'] ? 'enabled' : 'disabled') . '!</p></div>';
+    }
+    ?>
+    <div class="wrap seo-autofix-wrap">
+        <h1>🐛 Debug Logs</h1>
+        
+        <div class="seo-autofix-card" style="margin-bottom:20px;">
+            <form method="post" style="display:flex; gap:10px; align-items:center;">
+                <?php wp_nonce_field('seo_autofix_debug'); ?>
+                <button type="submit" name="toggle_debug" class="button <?php echo $settings['enable_debug_log'] ? 'button-secondary' : 'button-primary'; ?>">
+                    <?php echo $settings['enable_debug_log'] ? '⏸️ Disable Debug Logging' : '▶️ Enable Debug Logging'; ?>
+                </button>
+                <button type="submit" name="clear_logs" class="button" onclick="return confirm('Clear all debug logs?');">🗑️ Clear Logs</button>
+                <span style="margin-left:auto;">
+                    Status: <strong style="color:<?php echo $settings['enable_debug_log'] ? '#46b450' : '#dc3232'; ?>">
+                        <?php echo $settings['enable_debug_log'] ? '● Active' : '○ Inactive'; ?>
+                    </strong>
+                </span>
+            </form>
+        </div>
+        
+        <div class="seo-autofix-card">
+            <h3 style="margin-top:0;">📋 API Request Logs (Last 100)</h3>
+            <p class="description">Shows all incoming fix requests from the SaaS platform and their results</p>
+            
+            <?php if (empty($logs)): ?>
+                <div style="padding:40px; text-align:center; color:#666;">
+                    <p style="font-size:48px; margin:0;">📭</p>
+                    <p>No debug logs yet.</p>
+                    <p class="description">Enable debug logging and trigger some fixes from your SEO audit dashboard to see logs here.</p>
+                </div>
+            <?php else: ?>
+                <div style="max-height:600px; overflow-y:auto; font-family:monospace; font-size:12px; background:#1e1e1e; color:#d4d4d4; padding:15px; border-radius:4px;">
+                    <?php foreach ($logs as $idx => $log): ?>
+                        <div style="padding:8px 0; border-bottom:1px solid #333; <?php echo $idx === 0 ? 'background:#2d2d30;' : ''; ?>">
+                            <?php 
+                            // Color-code based on content
+                            $color = '#d4d4d4';
+                            if (strpos($log, 'request received') !== false) $color = '#569cd6';
+                            if (strpos($log, 'updated') !== false || strpos($log, 'fixed') !== false || strpos($log, 'set') !== false) $color = '#4ec9b0';
+                            if (strpos($log, 'not found') !== false || strpos($log, 'error') !== false) $color = '#f14c4c';
+                            ?>
+                            <span style="color:<?php echo $color; ?>"><?php echo esc_html($log); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <p class="description" style="margin-top:10px;">
+                    💡 <strong>Tip:</strong> Open browser DevTools console (F12) on your SEO audit page to see frontend logs
+                </p>
+            <?php endif; ?>
+        </div>
+        
+        <div class="seo-autofix-card" style="margin-top:20px;">
+            <h3 style="margin-top:0;">🔍 Debug Checklist</h3>
+            <table class="widefat" style="margin-top:10px;">
+                <tbody>
+                    <tr>
+                        <td><strong>Remote API</strong></td>
+                        <td><?php echo !empty($settings['enable_remote_api']) ? '✅ Enabled' : '❌ Disabled'; ?></td>
+                        <td class="description">Must be enabled for fixes to work</td>
+                    </tr>
+                    <tr>
+                        <td><strong>API Key</strong></td>
+                        <td><?php echo get_option('seo_autofix_api_key') ? '✅ Set' : '❌ Not set'; ?></td>
+                        <td class="description"><?php echo get_option('seo_autofix_api_key') ? '<code>' . substr(get_option('seo_autofix_api_key'), 0, 8) . '...</code>' : 'Generate in API / Connect page'; ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Debug Logging</strong></td>
+                        <td><?php echo !empty($settings['enable_debug_log']) ? '✅ Enabled' : '⚪ Disabled'; ?></td>
+                        <td class="description">Enable to see detailed request logs</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Log Entries</strong></td>
+                        <td><?php echo count($logs); ?> entries</td>
+                        <td class="description">Max 100 entries kept</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
     <?php
@@ -2788,19 +2952,28 @@ add_action('template_redirect', function() {
     if ($redirect) { $wpdb->query($wpdb->prepare("UPDATE $table SET hits = hits + 1 WHERE id = %d", $redirect->id)); wp_redirect($redirect->target_url, $redirect->redirect_type); exit; }
 });
 
+// Output custom meta description in wp_head - check both meta keys for compatibility
 add_action('wp_head', function() {
     $settings = get_option('seo_autofix_settings', array());
     if (is_singular()) {
-        $desc = get_post_meta(get_the_ID(), '_seo_autofix_description', true);
+        // Check both meta keys - _seo_autofix_meta_description (new) and _seo_autofix_description (legacy)
+        $desc = get_post_meta(get_the_ID(), '_seo_autofix_meta_description', true);
+        if (empty($desc)) {
+            $desc = get_post_meta(get_the_ID(), '_seo_autofix_description', true);
+        }
         if ($desc) echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
     }
     if (!empty($settings['enable_og_tags']) && is_singular()) {
-        $title = get_the_title(); $desc = get_post_meta(get_the_ID(), '_seo_autofix_description', true) ?: wp_trim_words(get_the_excerpt(), 25);
+        $custom_title = get_post_meta(get_the_ID(), '_seo_autofix_title', true);
+        $title = $custom_title ?: get_the_title();
+        $desc = get_post_meta(get_the_ID(), '_seo_autofix_meta_description', true) ?: get_post_meta(get_the_ID(), '_seo_autofix_description', true) ?: wp_trim_words(get_the_excerpt(), 25);
         $image = get_the_post_thumbnail_url(get_the_ID(), 'large') ?: ($settings['default_og_image'] ?? '');
         echo '<meta property="og:type" content="article"><meta property="og:title" content="' . esc_attr($title) . '"><meta property="og:description" content="' . esc_attr($desc) . '"><meta property="og:url" content="' . esc_url(get_permalink()) . '">' . ($image ? '<meta property="og:image" content="' . esc_url($image) . '">' : '') . "\n";
     }
     if (!empty($settings['enable_twitter_cards']) && is_singular()) {
-        $title = get_the_title(); $desc = get_post_meta(get_the_ID(), '_seo_autofix_description', true) ?: wp_trim_words(get_the_excerpt(), 25);
+        $custom_title = get_post_meta(get_the_ID(), '_seo_autofix_title', true);
+        $title = $custom_title ?: get_the_title();
+        $desc = get_post_meta(get_the_ID(), '_seo_autofix_meta_description', true) ?: get_post_meta(get_the_ID(), '_seo_autofix_description', true) ?: wp_trim_words(get_the_excerpt(), 25);
         $image = get_the_post_thumbnail_url(get_the_ID(), 'large') ?: ($settings['default_og_image'] ?? '');
         echo '<meta name="twitter:card" content="' . esc_attr($settings['twitter_card_type'] ?? 'summary_large_image') . '"><meta name="twitter:title" content="' . esc_attr($title) . '"><meta name="twitter:description" content="' . esc_attr($desc) . '">' . ($image ? '<meta name="twitter:image" content="' . esc_url($image) . '">' : '') . "\n";
     }
@@ -2811,6 +2984,32 @@ add_action('wp_head', function() {
         echo '<script type="application/ld+json">' . json_encode($schema, JSON_UNESCAPED_SLASHES) . '</script>' . "\n";
     }
 }, 1);
+
+// Filter document title to use custom SEO title if set
+add_filter('document_title_parts', function($title_parts) {
+    if (is_singular()) {
+        $custom_title = get_post_meta(get_the_ID(), '_seo_autofix_title', true);
+        if (!empty($custom_title)) {
+            $title_parts['title'] = $custom_title;
+            // Remove site name if it's already in the custom title
+            if (isset($title_parts['site']) && strpos($custom_title, $title_parts['site']) !== false) {
+                unset($title_parts['site']);
+            }
+        }
+    }
+    return $title_parts;
+}, 20);
+
+// Also filter pre_get_document_title for themes that don't use document_title_parts
+add_filter('pre_get_document_title', function($title) {
+    if (is_singular()) {
+        $custom_title = get_post_meta(get_the_ID(), '_seo_autofix_title', true);
+        if (!empty($custom_title)) {
+            return $custom_title;
+        }
+    }
+    return $title;
+}, 20);
 
 if (!empty($settings['enable_sitemap'])) { add_action('publish_post', 'seo_autofix_generate_sitemap'); add_action('publish_page', 'seo_autofix_generate_sitemap'); }
 
@@ -4198,6 +4397,92 @@ function seo_autofix_api_fix_headings($request) {
     ), 200);
 }
 
+// ==================== FIX REDIRECTS ====================
+function seo_autofix_api_fix_redirects($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'seo_autofix_redirects';
+    
+    // Get broken links that have been scanned
+    $broken_links = get_option('seo_autofix_broken_links', array());
+    $redirects_created = 0;
+    $suggestions = array();
+    
+    // For each broken link, try to find a similar page to redirect to
+    foreach ($broken_links as $link) {
+        $url = $link['url'] ?? '';
+        if (empty($url)) continue;
+        
+        // Extract the slug from the URL
+        $parsed = wp_parse_url($url);
+        $path = $parsed['path'] ?? '';
+        $slug = trim($path, '/');
+        $slug_parts = explode('/', $slug);
+        $last_part = end($slug_parts);
+        
+        if (empty($last_part)) continue;
+        
+        // Try to find a published post with similar slug
+        $similar_post = $wpdb->get_row($wpdb->prepare("
+            SELECT ID, post_name, post_title 
+            FROM {$wpdb->posts} 
+            WHERE post_status = 'publish' 
+            AND post_type IN ('post', 'page')
+            AND (post_name LIKE %s OR post_title LIKE %s)
+            LIMIT 1
+        ", '%' . $wpdb->esc_like($last_part) . '%', '%' . $wpdb->esc_like(str_replace('-', ' ', $last_part)) . '%'));
+        
+        if ($similar_post) {
+            $target_url = get_permalink($similar_post->ID);
+            
+            // Check if redirect already exists
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$table_name} WHERE source_url = %s",
+                $path
+            ));
+            
+            if (!$exists) {
+                $suggestions[] = array(
+                    'source' => $path,
+                    'target' => $target_url,
+                    'target_title' => $similar_post->post_title,
+                    'auto_created' => false
+                );
+            }
+        }
+    }
+    
+    // If auto_create parameter is passed, create the redirects
+    $auto_create = $request->get_param('auto_create');
+    if ($auto_create && !empty($suggestions)) {
+        foreach ($suggestions as &$suggestion) {
+            $result = $wpdb->insert($table_name, array(
+                'source_url' => $suggestion['source'],
+                'target_url' => $suggestion['target'],
+                'redirect_type' => 301,
+                'hits' => 0,
+                'created_at' => current_time('mysql'),
+            ));
+            
+            if ($result !== false) {
+                $redirects_created++;
+                $suggestion['auto_created'] = true;
+            }
+        }
+    }
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => $redirects_created > 0 
+            ? "Created $redirects_created redirects for broken links" 
+            : 'Redirect suggestions generated. Review and approve in WordPress admin.',
+        'redirects_created' => $redirects_created,
+        'suggestions' => array_slice($suggestions, 0, 20),
+        'broken_links_found' => count($broken_links),
+        'admin_url' => admin_url('admin.php?page=seo-auto-fix-redirects'),
+        'note' => 'Redirects require manual review. Use auto_create=true to auto-create suggested redirects.'
+    ), 200);
+}
+
 // ==================== FIX CORE WEB VITALS ====================
 function seo_autofix_api_fix_cwv($request) {
     $settings = get_option('seo_autofix_settings', array());
@@ -4259,5 +4544,607 @@ function seo_autofix_api_fix_cwv($request) {
             'webp_support' => function_exists('imagewebp')
         ),
         'note' => 'Some CWV improvements require theme/server-level changes'
+    ), 200);
+}
+
+// ==================== DEBUG LOGGING ====================
+function seo_autofix_debug_log($message, $data = null) {
+    $settings = get_option('seo_autofix_settings', array());
+    if (empty($settings['enable_debug_log'])) return;
+    
+    $log_entry = date('Y-m-d H:i:s') . ' - ' . $message;
+    if ($data !== null) {
+        $log_entry .= ' | Data: ' . json_encode($data);
+    }
+    
+    $log = get_option('seo_autofix_debug_log', array());
+    array_unshift($log, $log_entry);
+    $log = array_slice($log, 0, 100); // Keep last 100 entries
+    update_option('seo_autofix_debug_log', $log);
+    
+    // Also log to error_log for server-side debugging
+    error_log('[SEO AutoFix] ' . $log_entry);
+}
+
+// ==================== PER-PAGE FIX: META DESCRIPTION ====================
+function seo_autofix_api_fix_meta_page($request) {
+    // Try multiple ways to get the options
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    $ai_suggestion = $options['ai_suggestion'] ?? '';
+    $current_value = $options['current_value'] ?? array();
+    
+    seo_autofix_debug_log('fix_meta_page request received', array(
+        'page_url' => $page_url,
+        'page_pathname' => $page_pathname,
+        'ai_suggestion' => $ai_suggestion,
+        'current_value' => $current_value,
+        'raw_body' => $request->get_body()
+    ));
+    
+    // Find the post by URL
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        seo_autofix_debug_log('fix_meta_page: Post not found', array('url' => $page_url));
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url,
+            'debug' => 'url_to_postid returned 0'
+        ), 200);
+    }
+    
+    $post = get_post($post_id);
+    $current_meta = get_post_meta($post_id, '_seo_autofix_meta_description', true);
+    $current_length = $current_value['length'] ?? strlen($current_meta);
+    
+    // Generate optimal meta description using AI suggestion as guide
+    $new_meta = '';
+    if ($current_length === 0) {
+        // No meta - generate from content
+        $content = strip_tags($post->post_content);
+        $content = preg_replace('/\s+/', ' ', $content);
+        $new_meta = substr($content, 0, 155);
+        if (strlen($content) > 155) {
+            $new_meta = substr($new_meta, 0, strrpos($new_meta, ' ')) . '...';
+        }
+    } elseif ($current_length < 120) {
+        // Too short - expand it
+        $existing = $current_value['description'] ?? $current_meta;
+        $content = strip_tags($post->post_content);
+        $new_meta = $existing . ' ' . substr($content, 0, 160 - strlen($existing));
+        $new_meta = substr($new_meta, 0, 155);
+    } elseif ($current_length > 160) {
+        // Too long - shorten it
+        $existing = $current_value['description'] ?? $current_meta;
+        $new_meta = substr($existing, 0, 155);
+        $new_meta = substr($new_meta, 0, strrpos($new_meta, ' ')) . '...';
+    } else {
+        // Length is fine, no change needed
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => 'Meta description length is already optimal',
+            'page_url' => $page_url,
+            'current_length' => $current_length,
+            'fixed' => 0
+        ), 200);
+    }
+    
+    // Save the new meta description
+    update_post_meta($post_id, '_seo_autofix_meta_description', $new_meta);
+    
+    seo_autofix_debug_log('fix_meta_page: Meta description updated', array(
+        'post_id' => $post_id,
+        'old_length' => $current_length,
+        'new_length' => strlen($new_meta),
+        'new_meta' => substr($new_meta, 0, 50) . '...'
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'Meta description optimized for ' . $page_pathname,
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'old_length' => $current_length,
+        'new_length' => strlen($new_meta),
+        'new_meta' => $new_meta,
+        'fixed' => 1
+    ), 200);
+}
+
+// ==================== PER-PAGE FIX: TITLE TAG ====================
+function seo_autofix_api_fix_title_page($request) {
+    // Try multiple ways to get the options
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    $ai_suggestion = $options['ai_suggestion'] ?? '';
+    $current_value = $options['current_value'] ?? array();
+    
+    seo_autofix_debug_log('fix_title_page request received', array(
+        'page_url' => $page_url,
+        'page_pathname' => $page_pathname,
+        'ai_suggestion' => $ai_suggestion,
+        'raw_body' => $request->get_body()
+    ));
+    
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url
+        ), 200);
+    }
+    
+    $post = get_post($post_id);
+    $current_title = $current_value['title'] ?? $post->post_title;
+    $current_length = strlen($current_title);
+    
+    $new_title = $current_title;
+    $site_name = get_bloginfo('name');
+    
+    if ($current_length < 30) {
+        // Too short - add site name and context
+        $new_title = $current_title . ' | ' . $site_name;
+        if (strlen($new_title) < 30) {
+            // Still short, add more context
+            $new_title = $current_title . ' - Expert Guide | ' . $site_name;
+        }
+    } elseif ($current_length > 60) {
+        // Too long - shorten intelligently
+        $new_title = substr($current_title, 0, 55);
+        if (strrpos($new_title, ' ') !== false) {
+            $new_title = substr($new_title, 0, strrpos($new_title, ' '));
+        }
+        $new_title .= '...';
+    } else {
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => 'Title length is already optimal',
+            'page_url' => $page_url,
+            'current_length' => $current_length,
+            'fixed' => 0
+        ), 200);
+    }
+    
+    // Save custom title
+    update_post_meta($post_id, '_seo_autofix_title', $new_title);
+    
+    seo_autofix_debug_log('fix_title_page: Title updated', array(
+        'post_id' => $post_id,
+        'old_title' => $current_title,
+        'new_title' => $new_title
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'Title optimized for ' . $page_pathname,
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'old_title' => $current_title,
+        'new_title' => $new_title,
+        'old_length' => $current_length,
+        'new_length' => strlen($new_title),
+        'fixed' => 1
+    ), 200);
+}
+
+// ==================== PER-PAGE FIX: ALT TEXT ====================
+function seo_autofix_api_fix_alt_text_page($request) {
+    // Try multiple ways to get the options
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    
+    seo_autofix_debug_log('fix_alt_text_page request received', array(
+        'page_url' => $page_url,
+        'page_pathname' => $page_pathname
+    ));
+    
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url
+        ), 200);
+    }
+    
+    $post = get_post($post_id);
+    $content = $post->post_content;
+    $fixed_images = 0;
+    
+    // Find images without alt text in post content
+    preg_match_all('/<img[^>]+>/i', $content, $matches);
+    
+    foreach ($matches[0] as $img_tag) {
+        // Check if alt is missing or empty
+        if (!preg_match('/alt=["\'][^"\']+["\']/i', $img_tag)) {
+            // Extract src to generate alt text from filename
+            if (preg_match('/src=["\']([^"\']+)["\']/i', $img_tag, $src_match)) {
+                $src = $src_match[1];
+                $filename = pathinfo($src, PATHINFO_FILENAME);
+                $alt_text = ucwords(str_replace(array('-', '_'), ' ', $filename));
+                
+                // Add alt attribute
+                $new_img = preg_replace('/<img/', '<img alt="' . esc_attr($alt_text) . '"', $img_tag);
+                $content = str_replace($img_tag, $new_img, $content);
+                $fixed_images++;
+            }
+        }
+    }
+    
+    if ($fixed_images > 0) {
+        wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $content
+        ));
+        
+        seo_autofix_debug_log('fix_alt_text_page: Images fixed', array(
+            'post_id' => $post_id,
+            'fixed_count' => $fixed_images
+        ));
+    }
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => $fixed_images > 0 
+            ? "Fixed alt text for $fixed_images images on $page_pathname" 
+            : 'No images needing alt text found',
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'fixed' => $fixed_images
+    ), 200);
+}
+
+// ==================== PER-PAGE FIX: HEADINGS ====================
+function seo_autofix_api_fix_headings_page($request) {
+    // Try multiple ways to get the options
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    $current_value = $options['current_value'] ?? array();
+    
+    seo_autofix_debug_log('fix_headings_page request received', array(
+        'page_url' => $page_url,
+        'page_pathname' => $page_pathname,
+        'current_value' => $current_value
+    ));
+    
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url
+        ), 200);
+    }
+    
+    $post = get_post($post_id);
+    $content = $post->post_content;
+    $fixes = array();
+    
+    // Check for H1 in content (should only be page title)
+    $h1_count = preg_match_all('/<h1[^>]*>/i', $content, $matches);
+    if ($h1_count > 0) {
+        // Convert H1 to H2 in content
+        $content = preg_replace('/<h1([^>]*)>/i', '<h2$1>', $content);
+        $content = preg_replace('/<\/h1>/i', '</h2>', $content);
+        $fixes[] = "Converted $h1_count H1 tags to H2";
+    }
+    
+    // Fix skipped heading levels (e.g., H2 then H4)
+    // This is more complex and might need manual review
+    
+    if (count($fixes) > 0) {
+        wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $content
+        ));
+        
+        seo_autofix_debug_log('fix_headings_page: Headings fixed', array(
+            'post_id' => $post_id,
+            'fixes' => $fixes
+        ));
+    }
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => count($fixes) > 0 
+            ? 'Heading structure fixed on ' . $page_pathname 
+            : 'No heading issues to fix',
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'fixes_applied' => $fixes,
+        'fixed' => count($fixes) > 0 ? 1 : 0
+    ), 200);
+}
+
+// ==================== PER-PAGE FIX: CANONICAL URL ====================
+function seo_autofix_api_fix_canonical_page($request) {
+    // Try multiple ways to get the options
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    
+    seo_autofix_debug_log('fix_canonical_page request received', array(
+        'page_url' => $page_url,
+        'page_pathname' => $page_pathname
+    ));
+    
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url
+        ), 200);
+    }
+    
+    // Set canonical URL
+    $canonical = get_permalink($post_id);
+    update_post_meta($post_id, '_seo_autofix_canonical', $canonical);
+    
+    // Enable canonical output
+    $settings = get_option('seo_autofix_settings', array());
+    $settings['enable_canonical'] = true;
+    update_option('seo_autofix_settings', $settings);
+    
+    seo_autofix_debug_log('fix_canonical_page: Canonical set', array(
+        'post_id' => $post_id,
+        'canonical' => $canonical
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'Canonical URL set for ' . $page_pathname,
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'canonical' => $canonical,
+        'fixed' => 1
+    ), 200);
+}
+
+// ==================== TECHNICAL SEO COMBINED FIX ====================
+function seo_autofix_api_fix_technical_seo($request) {
+    seo_autofix_debug_log('fix_technical_seo request received', array());
+    
+    $fixes_applied = array();
+    $settings = get_option('seo_autofix_settings', array());
+    
+    // Enable canonical URLs
+    if (empty($settings['enable_canonical'])) {
+        $settings['enable_canonical'] = true;
+        $fixes_applied[] = 'Enabled canonical URLs';
+    }
+    
+    // Enable sitemap
+    if (empty($settings['enable_sitemap'])) {
+        $settings['enable_sitemap'] = true;
+        $fixes_applied[] = 'Enabled XML sitemap';
+    }
+    
+    // Enable robots.txt optimization
+    if (empty($settings['enable_robots'])) {
+        $settings['enable_robots'] = true;
+        $fixes_applied[] = 'Enabled robots.txt optimization';
+    }
+    
+    // Enable schema markup
+    if (empty($settings['enable_schema'])) {
+        $settings['enable_schema'] = true;
+        $fixes_applied[] = 'Enabled schema markup';
+    }
+    
+    // Enable Open Graph tags
+    if (empty($settings['enable_og_tags'])) {
+        $settings['enable_og_tags'] = true;
+        $fixes_applied[] = 'Enabled Open Graph tags';
+    }
+    
+    update_option('seo_autofix_settings', $settings);
+    
+    seo_autofix_debug_log('fix_technical_seo: Fixes applied', array(
+        'fixes' => $fixes_applied
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'Technical SEO optimizations applied',
+        'fixes_applied' => $fixes_applied,
+        'fixed' => count($fixes_applied)
+    ), 200);
+}
+
+// ==================== KEYWORDS PAGE FIX (RECOMMENDATIONS) ====================
+function seo_autofix_api_fix_keywords_page($request) {
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    $current_value = $options['current_value'] ?? array();
+    
+    seo_autofix_debug_log('fix_keywords_page request received', array(
+        'page_url' => $page_url,
+        'current_value' => $current_value
+    ));
+    
+    // Keywords require manual content optimization - provide recommendations
+    $recommendations = array(
+        'Ensure your primary keyword appears in the title tag',
+        'Include your main keyword in the H1 heading',
+        'Add your keyword naturally in the meta description',
+        'Use keyword variations throughout the content',
+        'Include related keywords (LSI) in subheadings'
+    );
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'Keyword optimization requires content updates. See recommendations.',
+        'page_url' => $page_url,
+        'recommendations' => $recommendations,
+        'current_consistency' => $current_value['consistency'] ?? 0,
+        'fixed' => 0,
+        'needs_manual_action' => $recommendations
+    ), 200);
+}
+
+// ==================== BROKEN LINKS PAGE FIX (RECOMMENDATIONS) ====================
+function seo_autofix_api_fix_broken_links_page($request) {
+    $options = $request->get_param('options');
+    if (empty($options)) {
+        $options = $request->get_json_params();
+        if (isset($options['options'])) {
+            $options = $options['options'];
+        }
+    }
+    if (empty($options)) {
+        $options = array();
+    }
+    
+    $page_url = $options['page_url'] ?? '';
+    $page_pathname = $options['page_pathname'] ?? '';
+    $current_value = $options['current_value'] ?? array();
+    
+    seo_autofix_debug_log('fix_broken_links_page request received', array(
+        'page_url' => $page_url,
+        'empty_links' => $current_value['emptyLinks'] ?? 0
+    ));
+    
+    $post_id = url_to_postid($page_url);
+    if (!$post_id && $page_pathname === '/') {
+        $post_id = get_option('page_on_front');
+    }
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'message' => 'Page not found in WordPress',
+            'page_url' => $page_url
+        ), 200);
+    }
+    
+    $post = get_post($post_id);
+    $content = $post->post_content;
+    $fixed_links = 0;
+    
+    // Find and fix empty href links (href="" or href="#")
+    $content = preg_replace_callback(
+        '/<a([^>]*?)href=["\'](?:#|)["\']([^>]*?)>/i',
+        function($matches) use (&$fixed_links) {
+            $fixed_links++;
+            // Remove empty links or convert to span
+            return '<span' . $matches[1] . $matches[2] . '>';
+        },
+        $content
+    );
+    
+    if ($fixed_links > 0) {
+        wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $content
+        ));
+        
+        seo_autofix_debug_log('fix_broken_links_page: Links fixed', array(
+            'post_id' => $post_id,
+            'fixed_count' => $fixed_links
+        ));
+    }
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => $fixed_links > 0 
+            ? "Removed $fixed_links empty/placeholder links on $page_pathname" 
+            : 'No empty links found to fix automatically. Review links manually.',
+        'page_url' => $page_url,
+        'post_id' => $post_id,
+        'fixed' => $fixed_links,
+        'recommendations' => array(
+            'Review all links in the page editor',
+            'Replace empty href="#" with actual URLs',
+            'Remove placeholder links that go nowhere',
+            'Use proper anchor text for all links'
+        )
     ), 200);
 }

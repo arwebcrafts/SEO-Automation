@@ -254,6 +254,49 @@ export async function POST(request: NextRequest) {
       ai_apply: "/wp-json/seo-autofix/v1/ai/apply",
       social_settings: "/wp-json/seo-autofix/v1/social/settings",
       social_apply: "/wp-json/seo-autofix/v1/social/apply",
+      // Technical SEO fix endpoints
+      fix_indexing: "/wp-json/seo-autofix/v1/fix/indexing",
+      fix_canonical: "/wp-json/seo-autofix/v1/fix/canonical",
+      fix_internal_links: "/wp-json/seo-autofix/v1/fix/internal-links",
+      fix_headings: "/wp-json/seo-autofix/v1/fix/headings",
+      fix_cwv: "/wp-json/seo-autofix/v1/fix/cwv",
+      fix_redirects: "/wp-json/seo-autofix/v1/fix/redirects",
+      // Performance optimization endpoints
+      fix_resource_hints: "/wp-json/seo-autofix/v1/fix/resource-hints",
+      fix_js_optimization: "/wp-json/seo-autofix/v1/fix/js-optimization",
+      fix_css_optimization: "/wp-json/seo-autofix/v1/fix/css-optimization",
+      fix_preload: "/wp-json/seo-autofix/v1/fix/preload",
+      // Local SEO endpoints
+      fix_contact_info: "/wp-json/seo-autofix/v1/fix/contact-info",
+      fix_business_hours: "/wp-json/seo-autofix/v1/fix/business-hours",
+      fix_service_areas: "/wp-json/seo-autofix/v1/fix/service-areas",
+      fix_local_schema: "/wp-json/seo-autofix/v1/fix/local-schema",
+      fix_map_embed: "/wp-json/seo-autofix/v1/fix/map-embed",
+      // Trust & E-E-A-T endpoints
+      fix_author_info: "/wp-json/seo-autofix/v1/fix/author-info",
+      fix_testimonials: "/wp-json/seo-autofix/v1/fix/testimonials",
+      fix_trust_badges: "/wp-json/seo-autofix/v1/fix/trust-badges",
+      fix_review_schema: "/wp-json/seo-autofix/v1/fix/review-schema",
+      // Accessibility endpoints
+      fix_skip_link: "/wp-json/seo-autofix/v1/fix/skip-link",
+      fix_focus_styles: "/wp-json/seo-autofix/v1/fix/focus-styles",
+      fix_link_warnings: "/wp-json/seo-autofix/v1/fix/link-warnings",
+      // Advanced endpoints
+      fix_analytics: "/wp-json/seo-autofix/v1/fix/analytics",
+      fix_faq_schema: "/wp-json/seo-autofix/v1/fix/faq-schema",
+      fix_llms_txt: "/wp-json/seo-autofix/v1/fix/llms-txt",
+      fix_breadcrumbs: "/wp-json/seo-autofix/v1/fix/breadcrumbs",
+      // Per-page fix endpoints (AI-powered)
+      fix_meta_page: "/wp-json/seo-autofix/v1/fix/meta-page",
+      fix_title_page: "/wp-json/seo-autofix/v1/fix/title-page",
+      fix_alt_text_page: "/wp-json/seo-autofix/v1/fix/alt-text-page",
+      fix_headings_page: "/wp-json/seo-autofix/v1/fix/headings-page",
+      fix_canonical_page: "/wp-json/seo-autofix/v1/fix/canonical-page",
+      // Technical SEO combined endpoint
+      fix_technical_seo: "/wp-json/seo-autofix/v1/fix/technical-seo",
+      // Keyword and content fix endpoints
+      fix_keywords_page: "/wp-json/seo-autofix/v1/fix/keywords-page",
+      fix_broken_links_page: "/wp-json/seo-autofix/v1/fix/broken-links-page",
     };
 
     const endpoint = actionEndpoints[action];
@@ -277,7 +320,8 @@ export async function POST(request: NextRequest) {
     };
 
     if (method === "POST" && options) {
-      fetchOptions.body = JSON.stringify(options);
+      // Wrap options in 'options' key for WordPress REST API
+      fetchOptions.body = JSON.stringify({ options });
     }
 
     const normalizedSiteUrl = normalizeUrl(site_url);

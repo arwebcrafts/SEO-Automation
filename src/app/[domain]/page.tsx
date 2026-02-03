@@ -84,10 +84,10 @@ interface Audit {
 }
 
 // Map check IDs to WordPress fix actions
-// NOTE: Only includes actions that CAN be fixed remotely via the WordPress plugin
-// Actions marked ❌ in docs/WORDPRESS-AUTOFIX-FEATURES.md are excluded
+// NOTE: Only includes actions that CAN be fully automated via the WordPress plugin
+// Manual-only items are excluded - they cannot be fixed remotely without human input
 const checkToFixAction: Record<string, { action: string; label: string }> = {
-  // SEO Basics - All fixable ✅
+  // SEO Basics - All fully automatable ✅
   "meta-description": { action: "fix_meta", label: "Generate Meta" },
   "metaDescription": { action: "fix_meta", label: "Generate Meta" },
   "title-tag": { action: "fix_meta", label: "Generate Meta" },
@@ -105,27 +105,16 @@ const checkToFixAction: Record<string, { action: string; label: string }> = {
   "robots-txt": { action: "fix_robots", label: "Optimize Robots.txt" },
   "robotsTxt": { action: "fix_robots", label: "Optimize Robots.txt" },
   
-  // Technical SEO - Fixable items only
+  // Technical SEO - Fully automatable only
   "indexing-status": { action: "fix_indexing", label: "Fix Indexing" },
   "page-speed-indicators": { action: "fix_cwv", label: "Optimize Speed" },
-  // ❌ "mobile-friendliness" - Requires theme/CSS changes, cannot fix remotely
   "https-security": { action: "fix_security", label: "Enable Security" },
-  "broken-links": { action: "fix_links", label: "Scan Links" },
-  // ❌ "url-structure" - Requires permalink structure changes, cannot fix remotely
   "canonical-tag": { action: "fix_canonical", label: "Add Canonical" },
   "canonical-url": { action: "fix_canonical", label: "Add Canonical" },
-  "redirect-issues": { action: "fix_redirects", label: "Fix Redirects" },
   "core-web-vitals-indicators": { action: "fix_cwv", label: "Optimize CWV" },
-  
-  // On-Page SEO Enhanced - Fixable items only
   "heading-structure": { action: "fix_headings", label: "Fix Headings" },
-  // ❌ "keyword-placement" - Requires content rewriting, cannot fix remotely
-  // ❌ "url-optimization" - Requires permalink changes, cannot fix remotely
-  "internal-linking": { action: "fix_internal_links", label: "Get Suggestions" },
-  // ❌ "content-duplication" - Requires human content decisions, cannot fix remotely
-  // ❌ "thin-content" - Requires human content creation, cannot fix remotely
   
-  // Performance
+  // Performance - Fully automatable
   "lazy-loading": { action: "fix_lazy_loading", label: "Enable Lazy Loading" },
   "imageLazyLoading": { action: "fix_lazy_loading", label: "Enable Lazy Loading" },
   "image-compression": { action: "fix_compress", label: "Compress Images" },
@@ -136,12 +125,12 @@ const checkToFixAction: Record<string, { action: string; label: string }> = {
   "cssOptimization": { action: "fix_css_optimization", label: "Optimize CSS" },
   "lcpImage": { action: "fix_preload", label: "Preload LCP Image" },
   
-  // Security
+  // Security - Fully automatable
   "security-headers": { action: "fix_security", label: "Enable Headers" },
   "securityHeaders": { action: "fix_security", label: "Enable Headers" },
   "hsts": { action: "fix_security", label: "Enable HSTS" },
   
-  // Schema & Structured Data
+  // Schema & Structured Data - Fully automatable
   "schema-markup": { action: "fix_schema", label: "Add Schema" },
   "schemaMarkup": { action: "fix_schema", label: "Add Schema" },
   "local-business-schema": { action: "fix_local_schema", label: "Add Local Schema" },
@@ -149,30 +138,14 @@ const checkToFixAction: Record<string, { action: string; label: string }> = {
   "faqSchema": { action: "fix_faq_schema", label: "Add FAQ Schema" },
   "breadcrumbSchema": { action: "fix_breadcrumbs", label: "Add Breadcrumbs" },
   
-  // Local SEO
-  "contactPage": { action: "fix_contact_info", label: "Add Contact Info" },
-  "clickToCall": { action: "fix_contact_info", label: "Add Click-to-Call" },
-  "phoneNumber": { action: "fix_contact_info", label: "Add Phone" },
-  "physicalAddress": { action: "fix_contact_info", label: "Add Address" },
-  "businessHours": { action: "fix_business_hours", label: "Add Hours" },
-  "googleMap": { action: "fix_map_embed", label: "Add Map" },
-  "serviceAreas": { action: "fix_service_areas", label: "Add Service Areas" },
-  
-  // Trust & E-E-A-T
-  "reviews": { action: "fix_testimonials", label: "Add Reviews" },
-  "testimonials": { action: "fix_testimonials", label: "Add Testimonials" },
-  "authorInfo": { action: "fix_author_info", label: "Add Author Info" },
-  "trustBadges": { action: "fix_trust_badges", label: "Add Trust Badges" },
-  "reviewSchema": { action: "fix_review_schema", label: "Add Review Schema" },
-  
-  // Accessibility
+  // Accessibility - Fully automatable
   "skipLink": { action: "fix_skip_link", label: "Add Skip Link" },
   "focusIndicators": { action: "fix_focus_styles", label: "Add Focus Styles" },
   "linkWarnings": { action: "fix_link_warnings", label: "Add Link Warnings" },
 
-  // Advanced
-  "analytics": { action: "fix_analytics", label: "Add Analytics" },
+  // Advanced - Fully automatable
   "llmsTxt": { action: "fix_llms_txt", label: "Generate llms.txt" },
+  "database": { action: "fix_database", label: "Optimize Database" },
 };
 
 function getFixableIssues(audit: Audit): string[] {
@@ -522,11 +495,11 @@ export default function ReportPage({
             />
           )}
 
-          {/* 3. Technical Health (merged: Technical SEO + Technology + Usability) */}
+          {/* 3. Technical SEO (merged: Technical SEO + Technology + Usability) */}
           {(audit.mergedCategories?.technicalHealth || audit.technicalSeoResults) && (
             <CategorySectionWithFix
               id="technical-health"
-              title="⚙️ Technical Health"
+              title="⚙️ Technical SEO"
               data={(audit.mergedCategories?.technicalHealth || audit.technicalSeoResults) as { score: number; grade: string; message?: string; checks: Array<Record<string, unknown>> }}
               domain={domain}
               wpConnected={wpConnected}
@@ -660,7 +633,7 @@ function CategorySectionWithFix({ id, title, data, domain, wpConnected, sampleSi
   };
   
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-8 shadow-lg hover:shadow-xl transition-all" id={id}>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-8 shadow-lg hover:shadow-xl transition-all scroll-mt-24" id={id}>
       {/* Header with gradient accent */}
       <div className={`h-1.5 bg-gradient-to-r ${getGradeColor(data.grade)}`}></div>
       

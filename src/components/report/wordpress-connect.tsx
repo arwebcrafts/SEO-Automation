@@ -884,33 +884,64 @@ export function AutoFixButton({ domain, fixType, label, onFixed }: AutoFixButton
     const items: string[] = [];
     
     // Check various result properties for fix counts
-    if (result.fixed) items.push(`${result.fixed} items fixed`);
-    if (result.alt_result?.fixed) items.push(`${result.alt_result.fixed} alt texts`);
-    if (result.meta_result?.fixed) items.push(`${result.meta_result.fixed} meta descriptions`);
-    if (result.content_images_fixed?.fixed) items.push(`${result.content_images_fixed.fixed} content images`);
-    if (result.title_optimization?.optimized) items.push(`${result.title_optimization.optimized} titles`);
-    if (result.fixes_applied?.length) items.push(`${result.fixes_applied.length} settings enabled`);
+    if (result.fixed && result.fixed > 0) items.push(`${result.fixed} items fixed`);
+    if (result.alt_result?.fixed && result.alt_result.fixed > 0) items.push(`${result.alt_result.fixed} alt texts`);
+    if (result.meta_result?.fixed && result.meta_result.fixed > 0) items.push(`${result.meta_result.fixed} meta descriptions`);
+    if (result.content_images_fixed?.fixed && result.content_images_fixed.fixed > 0) items.push(`${result.content_images_fixed.fixed} content images`);
+    if (result.title_optimization?.optimized && result.title_optimization.optimized > 0) items.push(`${result.title_optimization.optimized} titles`);
+    if (result.fixes_applied?.length && result.fixes_applied.length > 0) items.push(`${result.fixes_applied.length} settings enabled`);
     
     return items.length > 0 ? items.join(', ') : result.message;
   };
 
+  // Check if actual fixes were applied (not just "already done" messages)
+  const getActualFixCount = () => {
+    if (!result) return 0;
+    let count = 0;
+    if (result.fixed && result.fixed > 0) count += result.fixed;
+    if (result.alt_result?.fixed && result.alt_result.fixed > 0) count += result.alt_result.fixed;
+    if (result.meta_result?.fixed && result.meta_result.fixed > 0) count += result.meta_result.fixed;
+    if (result.content_images_fixed?.fixed && result.content_images_fixed.fixed > 0) count += result.content_images_fixed.fixed;
+    if (result.title_optimization?.optimized && result.title_optimization.optimized > 0) count += result.title_optimization.optimized;
+    if (result.fixes_applied?.length && result.fixes_applied.length > 0) count += result.fixes_applied.length;
+    return count;
+  };
+
   // Check if there are manual actions needed
   const needsManualAction = result?.needs_manual_action?.length > 0;
+  
+  // Check if no actual fixes were made (already done scenario)
+  const noFixesNeeded = result?.success && getActualFixCount() === 0 && !needsManualAction;
 
   if (result) {
     if (result.success) {
+      // Determine the appropriate status message
+      const getStatusLabel = () => {
+        if (noFixesNeeded) return 'Already OK';
+        if (needsManualAction) return 'Partial Fix';
+        if (getActualFixCount() > 0) return 'Fixed!';
+        return 'Complete';
+      };
+      
+      const getStatusColor = () => {
+        if (noFixesNeeded) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-200';
+        if (needsManualAction) return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-200';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-green-200';
+      };
+      
+      const getStatusIcon = () => {
+        if (noFixesNeeded) return <AlertCircle className="h-4 w-4" />;
+        return <Check className="h-4 w-4" />;
+      };
+      
       return (
         <div className="relative">
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-              needsManualAction 
-                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-200'
-                : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-green-200'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${getStatusColor()}`}
           >
-            <Check className="h-4 w-4" />
-            <span className="font-medium">{needsManualAction ? 'Partial Fix' : 'Fixed!'}</span>
+            {getStatusIcon()}
+            <span className="font-medium">{getStatusLabel()}</span>
             <span className="text-xs opacity-75">(details)</span>
           </button>
           {showDetails && (
