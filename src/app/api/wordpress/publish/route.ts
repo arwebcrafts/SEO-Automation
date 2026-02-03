@@ -44,15 +44,21 @@ export async function POST(request: NextRequest) {
 
     // Validate image URL
     let processedImageUrl = imageUrl;
+    console.log("[WordPress Publish] ========== IMAGE DEBUG ==========");
+    console.log("[WordPress Publish] Raw imageUrl from request:", imageUrl);
+    console.log("[WordPress Publish] imageUrl type:", typeof imageUrl);
+    
     if (imageUrl) {
       // Check if it's a valid URL
       try {
         new URL(imageUrl);
-        console.log("[WordPress Publish] Valid image URL provided:", imageUrl);
+        console.log("[WordPress Publish] Valid image URL confirmed:", imageUrl);
       } catch (urlError) {
         console.warn("[WordPress Publish] Invalid image URL, removing:", imageUrl);
         processedImageUrl = "";
       }
+    } else {
+      console.log("[WordPress Publish] No imageUrl provided in request");
     }
 
     if (!title || !content) {
@@ -153,74 +159,143 @@ export async function POST(request: NextRequest) {
 
     const responseData = await wordpressResponse.json();
     console.log("[WordPress Publish] Full API response:", JSON.stringify(responseData, null, 2));
+    console.log("[WordPress Publish] Plugin version:", responseData.pluginVersion || 'OLD VERSION - NEEDS UPDATE');
     console.log("[WordPress Publish] Post ID:", responseData.post?.id || responseData.postId);
-    console.log("[WordPress Publish] Featured media ID:", responseData.post?.featured_media);
+    console.log("[WordPress Publish] Featured media ID:", responseData.post?.featured_media || responseData.featured_media);
     console.log("[WordPress Publish] Response structure:", Object.keys(responseData));
+    
+    // Warn if old plugin version
+    if (!responseData.pluginVersion) {
+      console.warn("[WordPress Publish] WARNING: WordPress plugin is outdated! Please update the plugin.");
+    }
 
     // Check if image was successfully set as featured image
-    // WordPress plugin may return featured_media in different ways
+    // WordPress plugin now returns imageStatus with detailed info
+    const pluginImageStatus = responseData.imageStatus || {};
     const featuredMediaId = responseData.post?.featured_media || 
                            responseData.featured_media || 
+                           pluginImageStatus.thumbnailId ||
+                           pluginImageStatus.mediaId ||
                            responseData.post?.featured_media_id ||
                            responseData.featured_media_id ||
                            0;
     
-    const imageSetSuccessfully = featuredMediaId > 0;
+    // Check plugin's setAsFeatured flag if available (more reliable)
+    const imageSetSuccessfully = pluginImageStatus.setAsFeatured === true || featuredMediaId > 0;
     
+    console.log("[WordPress Publish] ========== PLUGIN RESPONSE DEBUG ==========");
+    console.log("[WordPress Publish] Plugin version:", responseData.pluginVersion || 'NOT FOUND - OLD VERSION!');
     console.log("[WordPress Publish] Image set as featured:", imageSetSuccessfully);
     console.log("[WordPress Publish] Featured media ID:", featuredMediaId);
+    console.log("[WordPress Publish] Plugin image status:", JSON.stringify(pluginImageStatus, null, 2));
+    if (pluginImageStatus.steps && Array.isArray(pluginImageStatus.steps)) {
+      console.log("[WordPress Publish] ========== STEP-BY-STEP DEBUG ==========");
+      pluginImageStatus.steps.forEach((step: string, i: number) => {
+        console.log(`[WordPress Publish] ${step}`);
+      });
+      console.log("[WordPress Publish] ========================================");
+    }
+    if (pluginImageStatus.error) {
+      console.log("[WordPress Publish] Image error from plugin:", pluginImageStatus.error);
+    }
+    console.log("[WordPress Publish] ==========================================");
     
-    // If image wasn't set as featured but we have an image URL, try a separate approach
+    // If image wasn't set as featured but we have an image URL, try WordPress standard REST API
     const postId = responseData.post?.id || responseData.postId;
     if (!imageSetSuccessfully && processedImageUrl && postId) {
-      console.log("[WordPress Publish] Trying fallback method to set featured image...");
+      console.log("[WordPress Publish] Trying WordPress REST API fallback to set featured image...");
       
       try {
-        // Try to upload the image to media library first, then set as featured
-        const mediaResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/media/upload`, {
+        // Step 1: Download the image from the URL
+        console.log("[WordPress Publish] Downloading image from:", processedImageUrl);
+        const imageResponse = await fetch(processedImageUrl);
+        
+        if (!imageResponse.ok) {
+          throw new Error(`Failed to download image: ${imageResponse.status}`);
+        }
+        
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const contentType = imageResponse.headers.get('content-type') || 'image/png';
+        
+        // Determine file extension from content type
+        let fileExt = 'png';
+        if (contentType.includes('jpeg') || contentType.includes('jpg')) fileExt = 'jpg';
+        else if (contentType.includes('png')) fileExt = 'png';
+        else if (contentType.includes('gif')) fileExt = 'gif';
+        else if (contentType.includes('webp')) fileExt = 'webp';
+        
+        const fileName = `featured-image-${Date.now()}.${fileExt}`;
+        console.log("[WordPress Publish] Image downloaded, size:", imageBuffer.byteLength, "bytes, type:", contentType);
+        
+        // Step 2: Upload to WordPress media library using standard REST API
+        // Create authorization header (Basic Auth with API key as password)
+        const authHeader = `Basic ${Buffer.from(`api:${API_KEY}`).toString('base64')}`;
+        
+        const mediaUploadResponse = await fetch(`${WORDPRESS_URL}/wp-json/wp/v2/media`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "X-SEO-AutoFix-Key": API_KEY,
+            "Content-Disposition": `attachment; filename="${fileName}"`,
+            "Content-Type": contentType,
+            "Authorization": authHeader,
           },
-          body: JSON.stringify({
-            image_url: processedImageUrl,
-            alt_text: title || "AI generated image",
-            caption: title || "AI generated featured image",
-            post_id: postId
-          }),
+          body: Buffer.from(imageBuffer),
         });
         
-        if (mediaResponse.ok) {
-          const mediaData = await mediaResponse.json();
-          console.log("[WordPress Publish] Media upload response:", mediaData);
+        console.log("[WordPress Publish] Media upload status:", mediaUploadResponse.status);
+        
+        if (mediaUploadResponse.ok) {
+          const mediaData = await mediaUploadResponse.json();
+          const mediaId = mediaData.id;
+          console.log("[WordPress Publish] Media uploaded successfully, ID:", mediaId);
           
-          const mediaId = mediaData.media_id || mediaData.id;
           if (mediaId) {
-            // Now set the uploaded media as featured image
-            const featuredResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/posts/${postId}/featured-image`, {
+            // Step 3: Update the post to set featured_media using standard REST API
+            const updatePostResponse = await fetch(`${WORDPRESS_URL}/wp-json/wp/v2/posts/${postId}`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-SEO-AutoFix-Key": API_KEY,
+                "Authorization": authHeader,
               },
               body: JSON.stringify({
-                media_id: mediaId
+                featured_media: mediaId
               }),
             });
             
-            if (featuredResponse.ok) {
-              console.log("[WordPress Publish] Featured image set successfully via fallback method");
-              // Update the response data to reflect the successful image setting
+            if (updatePostResponse.ok) {
+              console.log("[WordPress Publish] Featured image set successfully via WordPress REST API!");
               if (responseData.post) {
                 responseData.post.featured_media = mediaId;
               }
+              responseData.featured_media = mediaId;
             } else {
-              console.warn("[WordPress Publish] Fallback featured image setting failed:", await featuredResponse.text());
+              const updateError = await updatePostResponse.text();
+              console.warn("[WordPress Publish] Failed to update post with featured_media:", updateError);
+              
+              // Try using our plugin's simpler endpoint as last resort
+              const pluginUpdateResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/content/set-featured`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-SEO-AutoFix-Key": API_KEY,
+                },
+                body: JSON.stringify({
+                  post_id: postId,
+                  media_id: mediaId
+                }),
+              });
+              
+              if (pluginUpdateResponse.ok) {
+                console.log("[WordPress Publish] Featured image set via plugin fallback");
+                if (responseData.post) {
+                  responseData.post.featured_media = mediaId;
+                }
+                responseData.featured_media = mediaId;
+              }
             }
           }
         } else {
-          console.warn("[WordPress Publish] Media upload failed:", await mediaResponse.text());
+          const mediaError = await mediaUploadResponse.text();
+          console.warn("[WordPress Publish] WordPress media upload failed:", mediaError);
         }
       } catch (fallbackError) {
         console.warn("[WordPress Publish] Fallback method failed:", fallbackError);
@@ -298,12 +373,22 @@ export async function POST(request: NextRequest) {
       // Continue even if database storage fails
     }
 
+    // Get plugin's image status for detailed error info
+    const pluginImageError = pluginImageStatus?.error || '';
+    
     // Format image status message
-    const imageStatusMessage = processedImageUrl
-      ? finalImageSetSuccessfully
-        ? "Image set as featured"
-        : "Image sent but not set as featured"
-      : "No image included";
+    let imageStatusMessage = "No image included";
+    if (processedImageUrl) {
+      if (finalImageSetSuccessfully) {
+        imageStatusMessage = "Image set as featured";
+      } else if (pluginImageError) {
+        imageStatusMessage = `Image failed: ${pluginImageError}`;
+      } else {
+        imageStatusMessage = "Image sent but not set as featured";
+      }
+    }
+
+    console.log("[WordPress Publish] Final image status message:", imageStatusMessage);
 
     const message = `Content "${title}" published successfully to WordPress! Post ID: ${postData?.id || responseData.postId}\n\nImage Status: ${imageStatusMessage}`;
 
@@ -317,6 +402,7 @@ export async function POST(request: NextRequest) {
         setAsFeatured: finalImageSetSuccessfully,
         featuredMediaId: finalFeaturedMediaId,
         originalUrl: processedImageUrl,
+        pluginStatus: pluginImageStatus,
         message: imageStatusMessage
       }
     });

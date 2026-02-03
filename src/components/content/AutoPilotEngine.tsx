@@ -632,17 +632,21 @@ export default function AutoPilotEngine() {
         
         // Show detailed success message including image status and link
         const imageStatus = data.imageStatus;
+        console.log("[WordPress Publish] Image status from API:", imageStatus);
+        
         let message = `✅ Published successfully!\n\n📄 Post ID: ${data.postId}`;
         
         if (postUrl) {
           message += `\n🔗 View Post: ${postUrl}`;
         }
         
-        if (imageStatus && imageStatus.sent) {
-          if (imageStatus.setAsFeatured) {
-            message += `\n🖼️ Featured image set successfully!`;
-          } else {
+        if (imageStatus) {
+          if (imageStatus.setAsFeatured && imageStatus.featuredMediaId > 0) {
+            message += `\n🖼️ Featured image set successfully! (ID: ${imageStatus.featuredMediaId})`;
+          } else if (imageStatus.sent) {
             message += `\n⚠️ Image sent but not set as featured`;
+            // Log detailed error info
+            console.warn("[WordPress Publish] Image not set. Details:", imageStatus);
           }
         }
         

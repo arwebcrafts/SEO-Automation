@@ -3,7 +3,7 @@
 Plugin Name: SEO AutoFix Pro
 Plugin URI: https://example.com
 Description: Complete SEO toolkit with remote API - AI alt text, image optimization, broken link checker, meta editor, schema markup, security headers, and auto-fix integration.
-Version: 4.0.1
+Version: 5.3.0
 Requires at least: 5.0
 Requires PHP: 7.0
 Author: SEO AutoFix Team
@@ -13,7 +13,7 @@ Text Domain: seo-auto-fix
 
 defined('ABSPATH') || exit;
 
-define('SEO_AUTOFIX_VERSION', '5.0.0');
+define('SEO_AUTOFIX_VERSION', '5.3.0');
 define('SEO_AUDIT_API_URL', 'https://seo-audit-tool.vercel.app');
 
 // Register REST API routes immediately on plugin load
@@ -364,6 +364,13 @@ function seo_autofix_register_rest_routes() {
     register_rest_route($namespace, '/content', array(
         'methods' => 'GET',
         'callback' => 'seo_autofix_api_get_content',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Set featured image for a post
+    register_rest_route($namespace, '/content/set-featured', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_set_featured_image',
         'permission_callback' => 'seo_autofix_api_permission',
     ));
 
@@ -2798,28 +2805,151 @@ function seo_autofix_api_publish_content($request) {
     update_post_meta($post_id, '_seo_autofix_generated_by', 'auto-content-engine');
     
     // Set featured image if URL provided - try multiple field names
-    $image_url = esc_url_raw($params['imageUrl'] ?? '');
-    if (empty($image_url)) $image_url = esc_url_raw($params['featured_image'] ?? '');
-    if (empty($image_url)) $image_url = esc_url_raw($params['featuredImageUrl'] ?? '');
-    if (empty($image_url)) $image_url = esc_url_raw($params['image_url'] ?? '');
-    if (empty($image_url)) $image_url = esc_url_raw($params['media_url'] ?? '');
+    // IMPORTANT: Don't use esc_url_raw on AI image URLs as it can break them
+    $image_url = '';
+    $raw_urls = array(
+        $params['imageUrl'] ?? '',
+        $params['featured_image'] ?? '',
+        $params['featuredImageUrl'] ?? '',
+        $params['image_url'] ?? '',
+        $params['media_url'] ?? '',
+    );
+    
+    // Log all received image URL fields
+    error_log('[SEO AutoFix] Received image URL fields: ' . print_r($raw_urls, true));
+    
+    foreach ($raw_urls as $url) {
+        if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+            $image_url = $url;
+            break;
+        }
+    }
+    
+    error_log('[SEO AutoFix] Final image URL to process: ' . $image_url);
     
     $featured_media_id = 0;
-    if ($image_url) {
+    $image_error = '';
+    $debug_steps = array(); // Track each step for debugging
+    
+    if (!empty($image_url)) {
+        $debug_steps[] = 'Step 1: Image URL received: ' . substr($image_url, 0, 100) . '...';
         error_log('[SEO AutoFix] Processing featured image URL: ' . $image_url);
+        
         $image_id = seo_autofix_upload_image_from_url($image_url, $post_id, $title);
-        if ($image_id && !is_wp_error($image_id)) {
-            $result = set_post_thumbnail($post_id, $image_id);
-            if ($result) {
-                $featured_media_id = $image_id;
-                error_log('[SEO AutoFix] Featured image set successfully. Media ID: ' . $image_id);
+        $debug_steps[] = 'Step 2: Upload function returned: ' . (is_wp_error($image_id) ? 'WP_Error: ' . $image_id->get_error_message() : $image_id);
+        
+        if ($image_id && !is_wp_error($image_id) && is_numeric($image_id) && $image_id > 0) {
+            $debug_steps[] = 'Step 3: Image uploaded successfully with ID: ' . $image_id;
+            error_log('[SEO AutoFix] Image uploaded successfully with ID: ' . $image_id);
+            
+            // CRITICAL: Make sure the attachment exists and is valid
+            $attachment = get_post($image_id);
+            if (!$attachment || $attachment->post_type !== 'attachment') {
+                error_log('[SEO AutoFix] ERROR: Uploaded media ID is not a valid attachment!');
+                $image_error = 'Uploaded file is not a valid attachment';
             } else {
-                error_log('[SEO AutoFix] Failed to set featured image for post ' . $post_id);
+                $debug_steps[] = 'Step 4: Attachment verified, type: ' . $attachment->post_mime_type;
+                error_log('[SEO AutoFix] Attachment verified: ' . $attachment->post_mime_type);
+                
+                // Ensure theme supports post-thumbnails
+                if (!current_theme_supports('post-thumbnails')) {
+                    add_theme_support('post-thumbnails');
+                    $debug_steps[] = 'Step 5: Added theme support for post-thumbnails';
+                }
+                
+                // Delete any existing thumbnail first using direct database
+                global $wpdb;
+                $wpdb->delete(
+                    $wpdb->postmeta,
+                    array('post_id' => $post_id, 'meta_key' => '_thumbnail_id'),
+                    array('%d', '%s')
+                );
+                $debug_steps[] = 'Step 6: Cleared existing thumbnail meta';
+                
+                // Method 1: Direct database insert (most reliable)
+                $db_result = $wpdb->insert(
+                    $wpdb->postmeta,
+                    array(
+                        'post_id' => $post_id,
+                        'meta_key' => '_thumbnail_id',
+                        'meta_value' => $image_id
+                    ),
+                    array('%d', '%s', '%s')
+                );
+                $debug_steps[] = 'Step 7: Direct DB insert result: ' . ($db_result ? 'SUCCESS (rows: ' . $db_result . ')' : 'FAILED - ' . $wpdb->last_error);
+                
+                if ($db_result) {
+                    $featured_media_id = $image_id;
+                    $debug_steps[] = 'Step 8: Featured media ID set to: ' . $featured_media_id;
+                    wp_cache_delete($post_id, 'post_meta');
+                } else {
+                    // Method 2: set_post_thumbnail
+                    $result = set_post_thumbnail($post_id, $image_id);
+                    $debug_steps[] = 'Step 7b: set_post_thumbnail result: ' . ($result ? 'true' : 'false');
+                    
+                    if ($result) {
+                        $featured_media_id = $image_id;
+                    } else {
+                        // Method 3: update_post_meta
+                        $meta_result = update_post_meta($post_id, '_thumbnail_id', $image_id);
+                        $debug_steps[] = 'Step 7c: update_post_meta result: ' . ($meta_result ? 'success' : 'failed');
+                        if ($meta_result) {
+                            $featured_media_id = $image_id;
+                        } else {
+                            // Method 4: add_post_meta
+                            $add_result = add_post_meta($post_id, '_thumbnail_id', $image_id, true);
+                            $debug_steps[] = 'Step 7d: add_post_meta result: ' . ($add_result ? 'success' : 'failed');
+                            if ($add_result) {
+                                $featured_media_id = $image_id;
+                            } else {
+                                $image_error = 'All methods to set featured image failed';
+                                $debug_steps[] = 'Step 7e: ALL METHODS FAILED';
+                            }
+                        }
+                    }
+                }
+                
+                // Final verification using direct database query
+                $verify_query = $wpdb->get_var($wpdb->prepare(
+                    "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_thumbnail_id'",
+                    $post_id
+                ));
+                error_log('[SEO AutoFix] DB Verification - _thumbnail_id value: ' . $verify_query);
+                
+                if ($verify_query == $image_id) {
+                    $featured_media_id = $image_id;
+                    error_log('[SEO AutoFix] VERIFIED: Featured image is correctly set in database!');
+                } else {
+                    error_log('[SEO AutoFix] WARNING: DB verification failed. Expected ' . $image_id . ', got ' . $verify_query);
+                    // Force insert via raw SQL
+                    $wpdb->query($wpdb->prepare(
+                        "INSERT INTO {$wpdb->postmeta} (post_id, meta_key, meta_value) VALUES (%d, '_thumbnail_id', %s)",
+                        $post_id,
+                        $image_id
+                    ));
+                    wp_cache_delete($post_id, 'post_meta');
+                    
+                    $verify_again = $wpdb->get_var($wpdb->prepare(
+                        "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_thumbnail_id'",
+                        $post_id
+                    ));
+                    if ($verify_again == $image_id) {
+                        $featured_media_id = $image_id;
+                        error_log('[SEO AutoFix] FORCED via raw SQL: Featured image now set!');
+                    } else {
+                        $image_error = 'Database insert failed even with raw SQL';
+                        error_log('[SEO AutoFix] CRITICAL: ' . $image_error);
+                    }
+                }
             }
         } else {
-            $error_msg = is_wp_error($image_id) ? $image_id->get_error_message() : 'Unknown error';
-            error_log('[SEO AutoFix] Failed to upload featured image: ' . $error_msg);
+            $image_error = is_wp_error($image_id) ? $image_id->get_error_message() : 'Unknown upload error (returned: ' . var_export($image_id, true) . ')';
+            $debug_steps[] = 'Step 3: UPLOAD FAILED - ' . $image_error;
+            error_log('[SEO AutoFix] Failed to upload featured image: ' . $image_error);
         }
+    } else {
+        $debug_steps[] = 'No image URL provided or URL invalid';
+        error_log('[SEO AutoFix] No valid image URL provided');
     }
     
     // Generate SEO meta description
@@ -2836,13 +2966,27 @@ function seo_autofix_api_publish_content($request) {
     $permalink = get_permalink($post);
     $edit_url = admin_url('post.php?post=' . $post_id . '&action=edit');
     
-    // Get the actual featured media ID
-    $actual_featured_media = get_post_thumbnail_id($post_id);
+    // Clear ALL caches before getting featured media
+    clean_post_cache($post_id);
+    wp_cache_delete($post_id, 'post_meta');
+    wp_cache_flush();
+    
+    // Get the actual featured media ID directly from database to bypass cache
+    global $wpdb;
+    $actual_featured_media = $wpdb->get_var($wpdb->prepare(
+        "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_thumbnail_id' LIMIT 1",
+        $post_id
+    ));
+    $actual_featured_media = intval($actual_featured_media);
+    
+    error_log('[SEO AutoFix] Direct DB query for _thumbnail_id: ' . $actual_featured_media);
     
     error_log('[SEO AutoFix] Final post created. ID: ' . $post_id . ', Featured Media: ' . $actual_featured_media . ', Link: ' . $permalink);
+    error_log('[SEO AutoFix] ========== PUBLISH COMPLETE ==========');
     
     return new WP_REST_Response(array(
         'success' => true,
+        'pluginVersion' => '5.3.0-debug-steps',
         'post' => array(
             'id' => $post->ID,
             'title' => array('rendered' => get_the_title($post)),
@@ -2865,8 +3009,90 @@ function seo_autofix_api_publish_content($request) {
         'url' => $permalink,
         'editUrl' => $edit_url,
         'featured_media' => $actual_featured_media ?: 0,
+        'imageStatus' => array(
+            'requested' => !empty($image_url),
+            'url' => substr($image_url, 0, 200),
+            'uploaded' => $featured_media_id > 0,
+            'mediaId' => $featured_media_id,
+            'setAsFeatured' => $actual_featured_media > 0,
+            'thumbnailId' => $actual_featured_media,
+            'error' => $image_error,
+            'steps' => $debug_steps,
+            'debug' => array(
+                'uploadedId' => $featured_media_id,
+                'dbThumbnailId' => $actual_featured_media,
+                'match' => ($featured_media_id == $actual_featured_media && $actual_featured_media > 0)
+            )
+        ),
         'message' => "Content published as {$status}"
     ), 200);
+}
+
+// Set featured image for a post
+function seo_autofix_api_set_featured_image($request) {
+    $params = $request->get_json_params() ?: $request->get_params();
+    
+    $post_id = intval($params['post_id'] ?? 0);
+    $media_id = intval($params['media_id'] ?? 0);
+    
+    error_log('[SEO AutoFix] Set Featured Image - Post ID: ' . $post_id . ', Media ID: ' . $media_id);
+    
+    if (!$post_id || !$media_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'post_id and media_id are required'
+        ), 400);
+    }
+    
+    // Verify post exists
+    $post = get_post($post_id);
+    if (!$post) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Post not found'
+        ), 404);
+    }
+    
+    // Verify media exists
+    $media = get_post($media_id);
+    if (!$media || $media->post_type !== 'attachment') {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Media not found or not a valid attachment'
+        ), 404);
+    }
+    
+    // Delete existing thumbnail first
+    delete_post_meta($post_id, '_thumbnail_id');
+    
+    // Method 1: set_post_thumbnail
+    $result = set_post_thumbnail($post_id, $media_id);
+    error_log('[SEO AutoFix] set_post_thumbnail result: ' . ($result ? 'true' : 'false'));
+    
+    if (!$result) {
+        // Method 2: Direct meta update
+        $meta_result = update_post_meta($post_id, '_thumbnail_id', $media_id);
+        error_log('[SEO AutoFix] update_post_meta result: ' . ($meta_result ? 'success' : 'failed'));
+        
+        if (!$meta_result) {
+            // Method 3: Add meta
+            add_post_meta($post_id, '_thumbnail_id', $media_id, true);
+        }
+    }
+    
+    // Verify
+    $verify = get_post_thumbnail_id($post_id);
+    $success = ($verify == $media_id);
+    
+    error_log('[SEO AutoFix] Verification: ' . ($success ? 'SUCCESS' : 'FAILED') . ' - Expected: ' . $media_id . ', Got: ' . $verify);
+    
+    return new WP_REST_Response(array(
+        'success' => $success,
+        'post_id' => $post_id,
+        'media_id' => $media_id,
+        'verified_thumbnail_id' => $verify,
+        'message' => $success ? 'Featured image set successfully' : 'Failed to set featured image'
+    ));
 }
 
 function seo_autofix_api_get_content($request) {
@@ -2922,83 +3148,142 @@ function seo_autofix_api_get_content($request) {
 }
 
 function seo_autofix_upload_image_from_url($image_url, $post_id = 0, $title = '') {
-    if (!function_exists('download_url')) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-    }
-    if (!function_exists('media_handle_sideload')) {
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-    }
-    if (!function_exists('wp_generate_attachment_metadata')) {
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-    }
+    // Include required files
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
     
     // Log the attempt
-    error_log('[SEO AutoFix] Attempting to download image from: ' . $image_url);
+    error_log('[SEO AutoFix] ========== IMAGE UPLOAD START ==========');
+    error_log('[SEO AutoFix] Original URL: ' . $image_url);
+    error_log('[SEO AutoFix] Post ID: ' . $post_id . ', Title: ' . $title);
     
-    // Download file with extended timeout for AI-generated images
-    $tmp = download_url($image_url, 60);
-    if (is_wp_error($tmp)) {
-        error_log('[SEO AutoFix] Failed to download image: ' . $tmp->get_error_message());
-        return $tmp;
+    // Clean the URL
+    $image_url = trim($image_url);
+    
+    // Check if URL has a valid image extension, if not append #.jpg
+    // This is a documented workaround for media_sideload_image extension check
+    $parsed_url = parse_url($image_url, PHP_URL_PATH);
+    $extension = strtolower(pathinfo($parsed_url, PATHINFO_EXTENSION));
+    $valid_extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp');
+    
+    $modified_url = $image_url;
+    if (empty($extension) || !in_array($extension, $valid_extensions)) {
+        // Append #.jpg to bypass extension check (documented WordPress workaround)
+        $modified_url = $image_url . '#.jpg';
+        error_log('[SEO AutoFix] URL has no valid extension, using workaround: ' . $modified_url);
     }
     
-    // Determine proper filename - AI image URLs often don't have proper filenames
-    $filename = basename(parse_url($image_url, PHP_URL_PATH));
+    // Method 1: Try media_sideload_image with 'id' return type (simplest approach)
+    error_log('[SEO AutoFix] Method 1: Trying media_sideload_image...');
+    $attachment_id = media_sideload_image($modified_url, $post_id, $title, 'id');
     
-    // If filename doesn't have an extension or is too long, generate a proper one
-    $extension = pathinfo($filename, PATHINFO_EXTENSION);
-    if (empty($extension) || strlen($filename) > 100) {
-        // Try to detect file type from the downloaded file
-        $filetype = wp_check_filetype_and_ext($tmp, $filename);
-        if (!empty($filetype['ext'])) {
-            $extension = $filetype['ext'];
-        } else {
-            // Check the actual file content
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $tmp);
-            finfo_close($finfo);
-            
-            $mime_to_ext = array(
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'image/gif' => 'gif',
-                'image/webp' => 'webp',
-            );
-            $extension = $mime_to_ext[$mime] ?? 'jpg';
+    if (!is_wp_error($attachment_id) && is_numeric($attachment_id) && $attachment_id > 0) {
+        error_log('[SEO AutoFix] Method 1 SUCCESS! Attachment ID: ' . $attachment_id);
+        // Set alt text
+        if ($title) {
+            update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field($title));
         }
-        
-        // Generate clean filename from title or use default
-        $clean_title = $title ? sanitize_title($title) : 'featured-image';
-        $filename = substr($clean_title, 0, 50) . '-' . time() . '.' . $extension;
+        return $attachment_id;
     }
     
-    error_log('[SEO AutoFix] Using filename: ' . $filename);
+    $error_msg = is_wp_error($attachment_id) ? $attachment_id->get_error_message() : 'Unknown error';
+    error_log('[SEO AutoFix] Method 1 failed: ' . $error_msg);
     
-    // Get file info
-    $file_array = array(
-        'name' => $filename,
-        'tmp_name' => $tmp
+    // Method 2: Manual download with wp_remote_get and media_handle_sideload
+    error_log('[SEO AutoFix] Method 2: Trying manual download with wp_remote_get...');
+    
+    $response = wp_remote_get($image_url, array(
+        'timeout' => 120,
+        'redirection' => 10,
+        'sslverify' => false,
+        'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    ));
+    
+    if (is_wp_error($response)) {
+        error_log('[SEO AutoFix] Method 2 wp_remote_get failed: ' . $response->get_error_message());
+        return $response;
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($response);
+    error_log('[SEO AutoFix] Method 2 HTTP response code: ' . $response_code);
+    
+    if ($response_code !== 200) {
+        return new WP_Error('http_error', 'HTTP ' . $response_code);
+    }
+    
+    $image_data = wp_remote_retrieve_body($response);
+    $content_type = wp_remote_retrieve_header($response, 'content-type');
+    error_log('[SEO AutoFix] Method 2 Content-Type: ' . $content_type . ', Size: ' . strlen($image_data) . ' bytes');
+    
+    if (empty($image_data) || strlen($image_data) < 100) {
+        return new WP_Error('empty_image', 'Downloaded image is empty or too small');
+    }
+    
+    // Determine extension from content-type
+    $mime_to_ext = array(
+        'image/jpeg' => 'jpg',
+        'image/jpg' => 'jpg', 
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
     );
     
-    // Handle upload
-    $id = media_handle_sideload($file_array, $post_id);
+    $ext = 'jpg'; // default
+    foreach ($mime_to_ext as $mime => $e) {
+        if (strpos($content_type, $mime) !== false) {
+            $ext = $e;
+            break;
+        }
+    }
+    
+    // Generate filename
+    $clean_title = $title ? sanitize_title(substr($title, 0, 50)) : 'featured-image';
+    $filename = $clean_title . '-' . time() . '.' . $ext;
+    error_log('[SEO AutoFix] Method 2 Using filename: ' . $filename);
+    
+    // Save to temp file
+    $upload_dir = wp_upload_dir();
+    $tmp_file = $upload_dir['basedir'] . '/seo-autofix-tmp-' . time() . '.' . $ext;
+    
+    $written = file_put_contents($tmp_file, $image_data);
+    if ($written === false) {
+        error_log('[SEO AutoFix] Method 2 Failed to write temp file');
+        return new WP_Error('write_error', 'Failed to write temp file');
+    }
+    error_log('[SEO AutoFix] Method 2 Wrote ' . $written . ' bytes to: ' . $tmp_file);
+    
+    // Prepare file array
+    $file_array = array(
+        'name' => $filename,
+        'tmp_name' => $tmp_file,
+        'type' => 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext),
+        'error' => 0,
+        'size' => filesize($tmp_file),
+    );
+    
+    // Sideload the file
+    $attachment_id = media_handle_sideload($file_array, $post_id);
     
     // Clean up temp file
-    @unlink($tmp);
-    
-    if (is_wp_error($id)) {
-        error_log('[SEO AutoFix] Failed to sideload image: ' . $id->get_error_message());
-        return $id;
+    if (file_exists($tmp_file)) {
+        @unlink($tmp_file);
     }
     
-    error_log('[SEO AutoFix] Successfully uploaded image with ID: ' . $id);
-    
-    // Set alt text if title provided
-    if ($title && $id) {
-        update_post_meta($id, '_wp_attachment_image_alt', sanitize_text_field($title));
+    if (is_wp_error($attachment_id)) {
+        error_log('[SEO AutoFix] Method 2 media_handle_sideload failed: ' . $attachment_id->get_error_message());
+        return $attachment_id;
     }
     
-    return $id;
+    error_log('[SEO AutoFix] Method 2 SUCCESS! Attachment ID: ' . $attachment_id);
+    
+    // Set alt text
+    if ($title && $attachment_id) {
+        update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field($title));
+    }
+    
+    error_log('[SEO AutoFix] ========== IMAGE UPLOAD END ==========');
+    return $attachment_id;
 }
 
 // ==================== FRONTEND HOOKS ====================
