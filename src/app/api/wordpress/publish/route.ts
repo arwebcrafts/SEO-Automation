@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 // WordPress configuration - you should store these in environment variables
-const WORDPRESS_URL = process.env.WORDPRESS_URL || "https://your-wordpress-site.com";
-const API_KEY = process.env.WORDPRESS_API_KEY || "";
+// For now, we'll use the connection from localStorage for flexibility
+let WORDPRESS_URL = process.env.WORDPRESS_URL || "";
+let API_KEY = process.env.WORDPRESS_API_KEY || "";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,8 +20,27 @@ export async function POST(request: NextRequest) {
       contentType,
       imageUrl,
       primaryKeywords,
-      status = "draft" // Can be 'draft', 'publish', 'pending'
+      status = "draft", // Can be 'draft', 'publish', 'pending'
+      wordpressConnection // Allow passing WordPress connection details
     } = body;
+
+    // Use provided connection or get from environment
+    if (wordpressConnection) {
+      WORDPRESS_URL = wordpressConnection.siteUrl;
+      API_KEY = wordpressConnection.apiKey;
+    }
+
+    // If still not configured, try to get from a default connection method
+    if (!WORDPRESS_URL || !API_KEY) {
+      // For now, we'll need to pass the connection from the client
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "WordPress connection not configured. Please ensure WordPress is properly connected." 
+        },
+        { status: 400 }
+      );
+    }
 
     // Validate image URL
     let processedImageUrl = imageUrl;
@@ -54,21 +74,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Check if WordPress is configured
-    if (!WORDPRESS_URL || WORDPRESS_URL === "https://your-wordpress-site.com") {
+    if (!WORDPRESS_URL || !API_KEY) {
       return NextResponse.json(
         { 
           success: false,
-          error: "WordPress URL not configured. Please set WORDPRESS_URL in your environment variables." 
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!API_KEY) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: "WordPress API key not configured. Please set WORDPRESS_API_KEY in your environment variables." 
+          error: "WordPress connection not provided. Please ensure WordPress is properly connected." 
         },
         { status: 400 }
       );
@@ -79,26 +89,34 @@ export async function POST(request: NextRequest) {
     console.log("[WordPress Publish] Image URL type:", typeof processedImageUrl);
     console.log("[WordPress Publish] Image URL length:", processedImageUrl?.length);
     
-    // Prepare the request payload with better image handling
+    // Prepare the request payload with enhanced image handling
     const requestPayload = {
       title,
       content,
       location,
       contentType,
       status,
-      // Send image in multiple formats to ensure compatibility
+      // Enhanced image handling - try multiple approaches
       imageUrl: processedImageUrl?.trim() || "",
       featured_image: processedImageUrl?.trim() || "",
       featuredImageUrl: processedImageUrl?.trim() || "",
       image_url: processedImageUrl?.trim() || "",
+      // New fields for better image handling
+      media_url: processedImageUrl?.trim() || "",
+      thumbnail_url: processedImageUrl?.trim() || "",
+      // Explicit instruction to set as featured image
+      set_featured_image: !!processedImageUrl,
+      download_featured_image: !!processedImageUrl,
+      // Image metadata
       primaryKeywords,
-      // Add image metadata for debugging
       hasImage: !!processedImageUrl,
       imageSource: processedImageUrl ? "ai-generated" : "none",
       imageMetadata: processedImageUrl ? {
         url: processedImageUrl,
         type: "featured",
-        source: "ai-generated"
+        source: "ai-generated",
+        alt: title || "AI generated image",
+        caption: title || "AI generated featured image"
       } : null,
     };
     
@@ -151,20 +169,75 @@ export async function POST(request: NextRequest) {
     
     console.log("[WordPress Publish] Image set as featured:", imageSetSuccessfully);
     console.log("[WordPress Publish] Featured media ID:", featuredMediaId);
-    console.log("[WordPress Publish] Response structure:", Object.keys(responseData));
-    console.log("[WordPress Publish] Post structure:", responseData.post ? Object.keys(responseData.post) : 'No post object');
     
-    // Additional debugging for image handling
-    if (processedImageUrl) {
-      console.log("[WordPress Publish] Image was sent to WordPress:", processedImageUrl);
-      console.log("[WordPress Publish] WordPress response for image:", {
-        hasFeaturedMedia: !!featuredMediaId,
-        featuredMediaId: featuredMediaId,
-        imageSetAsFeatured: imageSetSuccessfully
-      });
-    } else {
-      console.log("[WordPress Publish] No image was sent to WordPress");
+    // If image wasn't set as featured but we have an image URL, try a separate approach
+    const postId = responseData.post?.id || responseData.postId;
+    if (!imageSetSuccessfully && processedImageUrl && postId) {
+      console.log("[WordPress Publish] Trying fallback method to set featured image...");
+      
+      try {
+        // Try to upload the image to media library first, then set as featured
+        const mediaResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/media/upload`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-SEO-AutoFix-Key": API_KEY,
+          },
+          body: JSON.stringify({
+            image_url: processedImageUrl,
+            alt_text: title || "AI generated image",
+            caption: title || "AI generated featured image",
+            post_id: postId
+          }),
+        });
+        
+        if (mediaResponse.ok) {
+          const mediaData = await mediaResponse.json();
+          console.log("[WordPress Publish] Media upload response:", mediaData);
+          
+          const mediaId = mediaData.media_id || mediaData.id;
+          if (mediaId) {
+            // Now set the uploaded media as featured image
+            const featuredResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/posts/${postId}/featured-image`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-SEO-AutoFix-Key": API_KEY,
+              },
+              body: JSON.stringify({
+                media_id: mediaId
+              }),
+            });
+            
+            if (featuredResponse.ok) {
+              console.log("[WordPress Publish] Featured image set successfully via fallback method");
+              // Update the response data to reflect the successful image setting
+              if (responseData.post) {
+                responseData.post.featured_media = mediaId;
+              }
+            } else {
+              console.warn("[WordPress Publish] Fallback featured image setting failed:", await featuredResponse.text());
+            }
+          }
+        } else {
+          console.warn("[WordPress Publish] Media upload failed:", await mediaResponse.text());
+        }
+      } catch (fallbackError) {
+        console.warn("[WordPress Publish] Fallback method failed:", fallbackError);
+      }
     }
+    
+    // Re-check featured media ID after fallback attempt
+    const finalFeaturedMediaId = responseData.post?.featured_media || 
+                                   responseData.featured_media || 
+                                   responseData.post?.featured_media_id ||
+                                   responseData.featured_media_id ||
+                                   0;
+    
+    const finalImageSetSuccessfully = finalFeaturedMediaId > 0;
+    
+    console.log("[WordPress Publish] Final image set as featured:", finalImageSetSuccessfully);
+    console.log("[WordPress Publish] Final featured media ID:", finalFeaturedMediaId);
 
     // Handle both old and new response formats for backward compatibility
     let postData;
@@ -181,7 +254,7 @@ export async function POST(request: NextRequest) {
         content: { rendered: "" },
         slug: responseData.url?.split('/')?.filter(Boolean)?.pop() || "",
         date: new Date().toISOString(),
-        featured_media: featuredMediaId, // Use the actual featured media ID
+        featured_media: finalFeaturedMediaId, // Use the actual featured media ID
         meta: {
           generated_by: "auto-content-engine"
         }
@@ -227,7 +300,7 @@ export async function POST(request: NextRequest) {
 
     // Format image status message
     const imageStatusMessage = processedImageUrl
-      ? imageSetSuccessfully
+      ? finalImageSetSuccessfully
         ? "Image set as featured"
         : "Image sent but not set as featured"
       : "No image included";
@@ -241,8 +314,8 @@ export async function POST(request: NextRequest) {
       postId: postData?.id || responseData.postId,
       imageStatus: {
         sent: !!processedImageUrl,
-        setAsFeatured: imageSetSuccessfully,
-        featuredMediaId: featuredMediaId,
+        setAsFeatured: finalImageSetSuccessfully,
+        featuredMediaId: finalFeaturedMediaId,
         originalUrl: processedImageUrl,
         message: imageStatusMessage
       }

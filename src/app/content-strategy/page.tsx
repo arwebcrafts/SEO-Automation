@@ -183,33 +183,51 @@ export default function ContentStrategyPage() {
     try {
       console.log("[Content Strategy] Loading latest analysis from database...");
       const response = await fetch("/api/content/history?limit=1");
-      if (response.ok) {
-        const data = await response.json();
-        console.log("[Content Strategy] API response:", data);
-        const latestAnalysis = data.analyses?.[0];
-        console.log("[Content Strategy] Latest analysis:", latestAnalysis);
-        if (latestAnalysis?.analysisOutput) {
-          console.log("[Content Strategy] Found analysisOutput, setting state");
-          console.log("[Content Strategy] analysisOutput keys:", Object.keys(latestAnalysis.analysisOutput));
-          
-          // Handle nested json structure
-          let outputData = latestAnalysis.analysisOutput;
-          if (outputData.json) {
-            console.log("[Content Strategy] Unwrapping nested json structure");
-            outputData = outputData.json;
-          }
-          
-          console.log("[Content Strategy] Final output keys:", Object.keys(outputData));
-          setAnalysisOutput(outputData);
-          setBaseUrl(latestAnalysis.baseUrl);
-        } else {
-          console.log("[Content Strategy] No analysisOutput found in latest analysis");
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("[Content Strategy] No analysis history found (404)");
+          return; // No history found is not an error
         }
-      } else {
         console.error("[Content Strategy] Failed to fetch history:", response.status);
+        return;
+      }
+      
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("[Content Strategy] Invalid content type received:", contentType);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log("[Content Strategy] API response:", data);
+      const latestAnalysis = data.analyses?.[0];
+      console.log("[Content Strategy] Latest analysis:", latestAnalysis);
+      
+      if (latestAnalysis?.analysisOutput) {
+        console.log("[Content Strategy] Found analysisOutput, setting state");
+        console.log("[Content Strategy] analysisOutput keys:", Object.keys(latestAnalysis.analysisOutput));
+        
+        // Handle nested json structure
+        let outputData = latestAnalysis.analysisOutput;
+        if (outputData.json) {
+          console.log("[Content Strategy] Unwrapping nested json structure");
+          outputData = outputData.json;
+        }
+        
+        console.log("[Content Strategy] Final output keys:", Object.keys(outputData));
+        setAnalysisOutput(outputData);
+        setBaseUrl(latestAnalysis.baseUrl);
+      } else {
+        console.log("[Content Strategy] No analysisOutput found in latest analysis");
       }
     } catch (e) {
-      console.error("Failed to load latest analysis:", e);
+      if (e instanceof SyntaxError && e.message.includes("JSON")) {
+        console.error("[Content Strategy] JSON parsing error:", e);
+        console.error("[Content Strategy] This might be due to invalid JSON response from API");
+      } else {
+        console.error("[Content Strategy] Failed to load latest analysis:", e);
+      }
     }
   };
 

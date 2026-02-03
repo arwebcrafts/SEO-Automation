@@ -11,6 +11,7 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Globe,
   Menu,
   X,
@@ -27,6 +28,11 @@ import {
   CalendarDays,
   Rocket,
   TrendingUp,
+  Search,
+  ClipboardCheck,
+  FileEdit,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { TopHeader } from "./TopHeader";
 import OnboardingWalkthrough from "@/components/onboarding/OnboardingWalkthrough";
@@ -40,19 +46,43 @@ interface NavItem {
   hidden?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { id: "home", label: "Audit Name", icon: Home, href: "/" },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/content-strategy?view=dashboard" },
-  { id: "strategy", label: "Strategy Hub", icon: BarChart3, href: "/content-strategy?view=analysis" },
-  { id: "auto-content", label: "Content Wizard", icon: Wand2, href: "/content-strategy?view=auto-content", hidden: true },
-  { id: "production", label: "Quick Writer", icon: Zap, href: "/content-strategy?view=production" },
-  { id: "auto-pilot", label: "Auto Pilot", icon: Rocket, href: "/content-strategy?view=auto-pilot", badge: "New" },
-  { id: "progress", label: "Progress", icon: TrendingUp, href: "/content-strategy?view=progress" },
-  { id: "planner", label: "Planner", icon: Calendar, href: "/content-strategy?view=planner", hidden: true },
-  { id: "drafts", label: "Drafts", icon: FileText, href: "/content-strategy?view=drafts" },
-  { id: "calendar", label: "Calendar", icon: CalendarDays, href: "/content-strategy?view=calendar" },
-  { id: "archives", label: "History", icon: Archive, href: "/history" },
+interface NavSection {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  items: NavItem[];
+}
+
+// Organized navigation with Audit and Content main sections
+const navSections: NavSection[] = [
+  {
+    id: "audit",
+    label: "Audit",
+    icon: ClipboardCheck,
+    items: [
+      { id: "home", label: "New Audit", icon: Plus, href: "/" },
+      { id: "audit-history", label: "History", icon: History, href: "/history?tab=audits" },
+    ],
+  },
+  {
+    id: "content",
+    label: "Content",
+    icon: FileEdit,
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/content-strategy?view=dashboard" },
+      { id: "strategy", label: "Strategy Hub", icon: BarChart3, href: "/content-strategy?view=analysis" },
+      { id: "production", label: "Quick Writer", icon: Zap, href: "/content-strategy?view=production" },
+      { id: "auto-pilot", label: "Auto Pilot", icon: Rocket, href: "/content-strategy?view=auto-pilot", badge: "New" },
+      { id: "progress", label: "Progress", icon: TrendingUp, href: "/content-strategy?view=progress" },
+      { id: "drafts", label: "Drafts", icon: FileText, href: "/content-strategy?view=drafts" },
+      { id: "calendar", label: "Calendar", icon: CalendarDays, href: "/content-strategy?view=calendar" },
+      { id: "content-history", label: "History", icon: History, href: "/history?tab=content" },
+    ],
+  },
 ];
+
+// Flatten for backward compatibility
+const navItems: NavItem[] = navSections.flatMap(section => section.items);
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -75,8 +105,17 @@ export default function SidebarLayout({
 }: SidebarLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>(["audit", "content"]);
   const pathname = usePathname();
   const router = useRouter();
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionId) 
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
 
   const handleNewStrategy = () => {
     if (onNewStrategy) {
@@ -172,46 +211,100 @@ export default function SidebarLayout({
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-3 space-y-1">
-          {navItems.filter(item => !item.hidden).map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item);
+        {/* Navigation with Sections */}
+        <nav className="p-3 space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+          {navSections.map((section) => {
+            const SectionIcon = section.icon;
+            const isExpanded = expandedSections.includes(section.id);
+            const hasActiveItem = section.items.some(item => isActive(item));
             
-            // Map nav item ids to onboarding selectors
-            const onboardingId = {
-              "strategy": "strategy-hub",
-              "production": "quick-writer",
-              "auto-pilot": "auto-pilot",
-              "calendar": "calendar",
-              "archives": "history",
-            }[item.id];
-
             return (
-              <Link
-                key={item.id}
-                href={item.href}
-                onClick={() => handleNavClick(item)}
-                data-onboarding={onboardingId}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                  active
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
-                } ${isCollapsed ? "justify-center" : ""}`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-blue-600 dark:text-blue-400" : ""}`} />
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
+              <div key={section.id} className="space-y-1">
+                {/* Section Header */}
+                <button
+                  onClick={() => !isCollapsed && toggleSection(section.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    hasActiveItem
+                      ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  } ${isCollapsed ? "justify-center" : ""}`}
+                  title={isCollapsed ? section.label : undefined}
+                >
+                  <SectionIcon className={`w-5 h-5 flex-shrink-0 ${hasActiveItem ? "text-blue-600 dark:text-blue-400" : ""}`} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 font-semibold text-sm">{section.label}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </>
+                  )}
+                </button>
+                
+                {/* Section Items */}
+                {!isCollapsed && isExpanded && (
+                  <div className="ml-3 pl-3 border-l-2 border-slate-200 dark:border-slate-700 space-y-1">
+                    {section.items.filter(item => !item.hidden).map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item);
+                      
+                      const onboardingId = {
+                        "strategy": "strategy-hub",
+                        "production": "quick-writer",
+                        "auto-pilot": "auto-pilot",
+                        "calendar": "calendar",
+                        "audit-history": "history",
+                        "content-history": "history",
+                      }[item.id];
+
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          onClick={() => handleNavClick(item)}
+                          data-onboarding={onboardingId}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm ${
+                            active
+                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-blue-600 dark:text-blue-400" : ""}`} />
+                          <span className="flex-1">{item.label}</span>
+                          {item.badge && (
+                            <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-              </Link>
+                
+                {/* Collapsed mode - show only section icon */}
+                {isCollapsed && (
+                  <div className="space-y-1">
+                    {section.items.filter(item => !item.hidden).slice(0, 1).map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item);
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          onClick={() => handleNavClick(item)}
+                          className={`flex items-center justify-center p-2 rounded-lg transition-all ${
+                            active
+                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                          title={item.label}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

@@ -2760,9 +2760,9 @@ function seo_autofix_api_publish_content($request) {
     $content = wp_kses_post($params['content'] ?? '');
     $location = sanitize_text_field($params['location'] ?? '');
     $content_type = sanitize_text_field($params['contentType'] ?? 'blog post');
-    $image_url = esc_url_raw($params['imageUrl'] ?? '');
     $primary_keywords = array_map('sanitize_text_field', (array) ($params['primaryKeywords'] ?? []));
     $status = sanitize_text_field($params['status'] ?? 'draft');
+    $tags = array_map('sanitize_text_field', (array) ($params['tags'] ?? []));
     
     // Validate required fields
     if (empty($title) || empty($content)) {
@@ -2797,11 +2797,28 @@ function seo_autofix_api_publish_content($request) {
     update_post_meta($post_id, '_seo_autofix_primary_keywords', $primary_keywords);
     update_post_meta($post_id, '_seo_autofix_generated_by', 'auto-content-engine');
     
-    // Set featured image if URL provided
+    // Set featured image if URL provided - try multiple field names
+    $image_url = esc_url_raw($params['imageUrl'] ?? '');
+    if (empty($image_url)) $image_url = esc_url_raw($params['featured_image'] ?? '');
+    if (empty($image_url)) $image_url = esc_url_raw($params['featuredImageUrl'] ?? '');
+    if (empty($image_url)) $image_url = esc_url_raw($params['image_url'] ?? '');
+    if (empty($image_url)) $image_url = esc_url_raw($params['media_url'] ?? '');
+    
+    $featured_media_id = 0;
     if ($image_url) {
-        $image_id = seo_autofix_upload_image_from_url($image_url, $post_id);
+        error_log('[SEO AutoFix] Processing featured image URL: ' . $image_url);
+        $image_id = seo_autofix_upload_image_from_url($image_url, $post_id, $title);
         if ($image_id && !is_wp_error($image_id)) {
-            set_post_thumbnail($post_id, $image_id);
+            $result = set_post_thumbnail($post_id, $image_id);
+            if ($result) {
+                $featured_media_id = $image_id;
+                error_log('[SEO AutoFix] Featured image set successfully. Media ID: ' . $image_id);
+            } else {
+                error_log('[SEO AutoFix] Failed to set featured image for post ' . $post_id);
+            }
+        } else {
+            $error_msg = is_wp_error($image_id) ? $image_id->get_error_message() : 'Unknown error';
+            error_log('[SEO AutoFix] Failed to upload featured image: ' . $error_msg);
         }
     }
     
@@ -2809,8 +2826,20 @@ function seo_autofix_api_publish_content($request) {
     $excerpt = wp_trim_words(strip_tags($content), 30);
     update_post_meta($post_id, '_seo_autofix_description', $excerpt);
     
+    // Set tags if provided
+    if (!empty($tags)) {
+        wp_set_post_tags($post_id, $tags, false);
+    }
+    
     // Get the created post object
     $post = get_post($post_id);
+    $permalink = get_permalink($post);
+    $edit_url = admin_url('post.php?post=' . $post_id . '&action=edit');
+    
+    // Get the actual featured media ID
+    $actual_featured_media = get_post_thumbnail_id($post_id);
+    
+    error_log('[SEO AutoFix] Final post created. ID: ' . $post_id . ', Featured Media: ' . $actual_featured_media . ', Link: ' . $permalink);
     
     return new WP_REST_Response(array(
         'success' => true,
@@ -2820,16 +2849,22 @@ function seo_autofix_api_publish_content($request) {
             'content' => array('rendered' => wpautop($post->post_content)),
             'status' => $post->post_status,
             'slug' => $post->post_name,
-            'link' => get_permalink($post),
+            'link' => $permalink,
+            'edit_url' => $edit_url,
             'date' => $post->post_date_gmt,
-            'featured_media' => get_post_thumbnail_id($post) ?: 0,
+            'featured_media' => $actual_featured_media ?: 0,
             'meta' => array(
                 'primary_keywords' => $primary_keywords,
                 'location' => $location,
                 'content_type' => $content_type,
-                'generated_by' => 'auto-content-engine'
+                'generated_by' => 'auto-content-engine',
+                'tags' => $tags
             )
         ),
+        'postId' => $post->ID,
+        'url' => $permalink,
+        'editUrl' => $edit_url,
+        'featured_media' => $actual_featured_media ?: 0,
         'message' => "Content published as {$status}"
     ), 200);
 }
@@ -2886,23 +2921,62 @@ function seo_autofix_api_get_content($request) {
     }
 }
 
-function seo_autofix_upload_image_from_url($image_url, $post_id = 0) {
+function seo_autofix_upload_image_from_url($image_url, $post_id = 0, $title = '') {
     if (!function_exists('download_url')) {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
     }
     if (!function_exists('media_handle_sideload')) {
         require_once(ABSPATH . 'wp-admin/includes/media.php');
     }
+    if (!function_exists('wp_generate_attachment_metadata')) {
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+    }
     
-    // Download file
-    $tmp = download_url($image_url);
+    // Log the attempt
+    error_log('[SEO AutoFix] Attempting to download image from: ' . $image_url);
+    
+    // Download file with extended timeout for AI-generated images
+    $tmp = download_url($image_url, 60);
     if (is_wp_error($tmp)) {
+        error_log('[SEO AutoFix] Failed to download image: ' . $tmp->get_error_message());
         return $tmp;
     }
     
+    // Determine proper filename - AI image URLs often don't have proper filenames
+    $filename = basename(parse_url($image_url, PHP_URL_PATH));
+    
+    // If filename doesn't have an extension or is too long, generate a proper one
+    $extension = pathinfo($filename, PATHINFO_EXTENSION);
+    if (empty($extension) || strlen($filename) > 100) {
+        // Try to detect file type from the downloaded file
+        $filetype = wp_check_filetype_and_ext($tmp, $filename);
+        if (!empty($filetype['ext'])) {
+            $extension = $filetype['ext'];
+        } else {
+            // Check the actual file content
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $tmp);
+            finfo_close($finfo);
+            
+            $mime_to_ext = array(
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/webp' => 'webp',
+            );
+            $extension = $mime_to_ext[$mime] ?? 'jpg';
+        }
+        
+        // Generate clean filename from title or use default
+        $clean_title = $title ? sanitize_title($title) : 'featured-image';
+        $filename = substr($clean_title, 0, 50) . '-' . time() . '.' . $extension;
+    }
+    
+    error_log('[SEO AutoFix] Using filename: ' . $filename);
+    
     // Get file info
     $file_array = array(
-        'name' => basename($image_url),
+        'name' => $filename,
         'tmp_name' => $tmp
     );
     
@@ -2911,6 +2985,18 @@ function seo_autofix_upload_image_from_url($image_url, $post_id = 0) {
     
     // Clean up temp file
     @unlink($tmp);
+    
+    if (is_wp_error($id)) {
+        error_log('[SEO AutoFix] Failed to sideload image: ' . $id->get_error_message());
+        return $id;
+    }
+    
+    error_log('[SEO AutoFix] Successfully uploaded image with ID: ' . $id);
+    
+    // Set alt text if title provided
+    if ($title && $id) {
+        update_post_meta($id, '_wp_attachment_image_alt', sanitize_text_field($title));
+    }
     
     return $id;
 }

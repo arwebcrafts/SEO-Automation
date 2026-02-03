@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
 
     const analyses = await prisma.contentAnalysis.findMany({
       where: {
@@ -15,7 +17,7 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
-      take: 50,
+      take: Math.min(limit, 50),
       select: {
         id: true,
         baseUrl: true,

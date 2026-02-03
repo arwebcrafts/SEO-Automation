@@ -5,7 +5,7 @@ import {
   Rocket, Calendar, Clock, MapPin, Tag, FileText, ChevronRight, ChevronLeft,
   CheckCircle2, Loader2, Sparkles, RefreshCw, Eye, Check, X, Upload, Target,
   Zap, Settings, Play, ExternalLink, Save, Globe, BarChart3, Image as ImageIcon,
-  Download, AlertCircle, Plug,
+  Download, AlertCircle, Plug, XCircle,
 } from "lucide-react";
 import LocationSelector from "./LocationSelector";
 
@@ -44,6 +44,8 @@ interface GeneratedContent {
   scheduledDate: Date;
   scheduledTime: string;
   keywords: string[];
+  publishedUrl?: string;
+  wordpressPostId?: number;
 }
 
 const STEPS = [
@@ -61,9 +63,13 @@ export default function AutoPilotEngine() {
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(true);
   
   const [postsPerDay, setPostsPerDay] = useState(1);
-  const [postingTime, setPostingTime] = useState("09:00");
+  const [postingTimes, setPostingTimes] = useState(["09:00"]);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState("");
   const [totalPosts, setTotalPosts] = useState(30);
+  const [pastDateMode, setPastDateMode] = useState<"instant" | "delayed" | "normal">("normal");
+  const [delayInterval, setDelayInterval] = useState(1);
+  const [delayUnit, setDelayUnit] = useState<"hours" | "days">("hours");
   
   const [userKeywords, setUserKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
@@ -75,6 +81,9 @@ export default function AutoPilotEngine() {
   
   const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
   const [currentKeywordTopicIndex, setCurrentKeywordTopicIndex] = useState(0);
+  
+  const [expandedContent, setExpandedContent] = useState<string | null>(null);
+  const [viewingContent, setViewingContent] = useState<any>(null);
   
   const [generatedContents, setGeneratedContents] = useState<GeneratedContent[]>([]);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
@@ -95,14 +104,64 @@ export default function AutoPilotEngine() {
   const [scrapedContent, setScrapedContent] = useState("");
   const [showPromptTemplates, setShowPromptTemplates] = useState(false);
   
-  // Pre-written prompt templates
+  // Enhanced prompt templates
   const promptTemplates = [
-    { id: 1, name: "SEO-Optimized Blog Post", prompt: "Write a comprehensive, SEO-optimized blog post that includes relevant statistics, expert insights, and actionable tips. Structure with clear headings, bullet points, and a compelling call-to-action." },
-    { id: 2, name: "Local Business Focus", prompt: "Create content that emphasizes local expertise and community involvement. Include location-specific details, local landmarks references, and address common local customer pain points." },
-    { id: 3, name: "Technical Authority", prompt: "Write in-depth technical content that demonstrates industry expertise. Include technical specifications, detailed explanations, and cite authoritative sources to build E-E-A-T." },
-    { id: 4, name: "Problem-Solution Format", prompt: "Structure the content around identifying customer problems and presenting clear solutions. Use real-world examples and case studies to illustrate effectiveness." },
-    { id: 5, name: "Comparison Guide", prompt: "Create a detailed comparison guide that helps readers make informed decisions. Include pros and cons, feature comparisons, and clear recommendations." },
-    { id: 6, name: "How-To Tutorial", prompt: "Write a step-by-step tutorial with numbered instructions, helpful tips, common mistakes to avoid, and visual descriptions for each step." },
+    { 
+      id: 1, 
+      name: "SEO-Optimized Blog Post", 
+      prompt: "Write a comprehensive, SEO-optimized blog post that includes relevant statistics, expert insights, and actionable tips. Structure with clear headings (H1, H2, H3), bullet points, and a compelling call-to-action. Include meta description and focus on readability.",
+      category: "SEO",
+      icon: "🔍"
+    },
+    { 
+      id: 2, 
+      name: "Local Business Focus", 
+      prompt: "Create content that emphasizes local expertise and community involvement. Include location-specific details, local landmarks references, and address common local customer pain points. Focus on building trust with local audience.",
+      category: "Local",
+      icon: "📍"
+    },
+    { 
+      id: 3, 
+      name: "Technical Authority", 
+      prompt: "Write in-depth technical content that demonstrates industry expertise. Include technical specifications, detailed explanations, code examples, and cite authoritative sources to build E-E-A-T. Use professional terminology.",
+      category: "Technical",
+      icon: "⚙️"
+    },
+    { 
+      id: 4, 
+      name: "Problem-Solution Format", 
+      prompt: "Structure the content around identifying customer problems and presenting clear solutions. Use real-world examples, case studies, and step-by-step guidance to illustrate effectiveness. Include before/after scenarios.",
+      category: "Solution",
+      icon: "💡"
+    },
+    { 
+      id: 5, 
+      name: "Comparison Guide", 
+      prompt: "Create a detailed comparison guide that helps readers make informed decisions. Include pros and cons, feature comparisons, pricing tables, and clear recommendations. Use comparison charts and visual elements.",
+      category: "Comparison",
+      icon: "⚖️"
+    },
+    { 
+      id: 6, 
+      name: "How-To Tutorial", 
+      prompt: "Write a step-by-step tutorial with numbered instructions, helpful tips, common mistakes to avoid, and visual descriptions for each step. Include prerequisites, tools needed, and expected outcomes.",
+      category: "Tutorial",
+      icon: "📝"
+    },
+    { 
+      id: 7, 
+      name: "Industry News Analysis", 
+      prompt: "Analyze recent industry trends and news. Provide expert commentary, implications for businesses, and future predictions. Include data points and credible sources.",
+      category: "News",
+      icon: "📰"
+    },
+    { 
+      id: 8, 
+      name: "Case Study", 
+      prompt: "Write a detailed case study with client background, challenges faced, solutions implemented, and measurable results. Include testimonials and key performance indicators.",
+      category: "Case Study",
+      icon: "📊"
+    }
   ];
 
   useEffect(() => {
@@ -216,6 +275,42 @@ export default function AutoPilotEngine() {
     setSelectedLocations(selectedLocations.filter(l => l !== location));
   };
 
+  const handleAddPostingTime = () => {
+    if (postingTimes.length < 5) {
+      setPostingTimes([...postingTimes, "12:00"]);
+    }
+  };
+
+  const handleRemovePostingTime = (index: number) => {
+    if (postingTimes.length > 1) {
+      setPostingTimes(postingTimes.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleUpdatePostingTime = (index: number, time: string) => {
+    const newTimes = [...postingTimes];
+    newTimes[index] = time;
+    setPostingTimes(newTimes);
+  };
+
+  const checkPastDate = () => {
+    const start = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    
+    if (start < today) {
+      setPastDateMode("delayed");
+      return true;
+    }
+    setPastDateMode("normal");
+    return false;
+  };
+
+  useEffect(() => {
+    checkPastDate();
+  }, [startDate]);
+
   const loadAnalysisData = async () => {
     setIsLoadingAnalysis(true);
     try {
@@ -285,15 +380,37 @@ export default function AutoPilotEngine() {
   const generateScheduledDates = (count: number): Date[] => {
     const dates: Date[] = [];
     let currentDate = new Date(startDate);
+    const end = endDate ? new Date(endDate) : null;
     let postsThisDay = 0;
-    for (let i = 0; i < count; i++) {
+    let timeIndex = 0;
+    
+    // Calculate maximum possible posts based on date range and posts per day
+    let maxPossiblePosts = count;
+    if (end) {
+      const daysInRange = Math.ceil((end.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      maxPossiblePosts = Math.min(count, daysInRange * postsPerDay);
+    }
+    
+    for (let i = 0; i < maxPossiblePosts; i++) {
+      // If we have an end date and we've passed it, stop generating
+      if (end && currentDate > end) {
+        break;
+      }
+      
       dates.push(new Date(currentDate));
       postsThisDay++;
+      
+      // Move to next posting time or next day
       if (postsThisDay >= postsPerDay) {
-        currentDate.setDate(currentDate.getDate() + 1);
         postsThisDay = 0;
+        timeIndex = 0;
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else {
+        // Use posting times in round-robin if available, otherwise use same time
+        timeIndex = postingTimes.length > 0 ? (timeIndex + 1) % postingTimes.length : 0;
       }
     }
+    
     return dates;
   };
 
@@ -320,18 +437,21 @@ export default function AutoPilotEngine() {
 
       const result = await response.json();
       if (result.success && result.topics) {
-        const topics: GeneratedTopic[] = result.topics.map((topic: any, index: number) => ({
-          id: `topic_${Date.now()}_${index}`,
-          title: topic.title,
-          primaryKeywords: topic.primaryKeywords || [],
-          secondaryKeywords: topic.secondaryKeywords || [],
-          userKeywords: userKeywords.slice(0, 3),
-          scheduledDate: scheduledDates[index] || new Date(),
-          scheduledTime: postingTime,
-          selected: index < totalPosts, // Only auto-select up to totalPosts
-          contentType: topic.contentType || "blog post",
-          description: topic.description || "",
-        }));
+        const topics: GeneratedTopic[] = result.topics.map((topic: any, index: number) => {
+          const timeIndex = index % postingTimes.length;
+          return {
+            id: `topic_${Date.now()}_${index}`,
+            title: topic.title,
+            primaryKeywords: topic.primaryKeywords || [],
+            secondaryKeywords: topic.secondaryKeywords || [],
+            userKeywords: userKeywords.slice(0, 3),
+            scheduledDate: scheduledDates[index] || new Date(),
+            scheduledTime: postingTimes[timeIndex],
+            selected: index < totalPosts,
+            contentType: topic.contentType || "blog post",
+            description: topic.description || "",
+          };
+        });
         setGeneratedTopics(topics);
       } else {
         throw new Error(result.error || "No topics generated");
@@ -469,33 +589,68 @@ export default function AutoPilotEngine() {
       alert('WordPress connection incomplete. Please reconnect from the Audit Report page.');
       return;
     }
-
+    
     try {
-      // Use WordPress plugin API directly
-      const response = await fetch(`${siteUrl}/wp-json/seo-autofix/v1/content/publish`, {
+      // Auto-detect category based on content keywords and title
+      const detectedCategory = detectCategory(content.title, content.keywords);
+      
+      // Prepare content with proper formatting
+      const formattedContent = formatContentForWordPress(content.content);
+      
+      // Use our Next.js API route with WordPress connection details
+      const response = await fetch("/api/wordpress/publish", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-SEO-AutoFix-Key": apiKey,
         },
         body: JSON.stringify({ 
-          title: content.title, 
-          content: content.content, 
+          title: content.title.replace(/^Title:\s*["']?|["']?$/g, '').trim(), // Clean up title formatting
+          content: formattedContent,
           location: selectedLocations[0] || "Pakistan", 
           contentType: "blog post", 
           imageUrl: content.imageUrl,
-          featured_image: content.imageUrl,
           primaryKeywords: content.keywords, 
-          status: "publish" 
+          status: "publish",
+          wordpressConnection: { siteUrl, apiKey }, // Pass connection details
         }),
       });
       
       const data = await response.json();
-      const postId = data.post?.id || data.postId;
       
-      if (postId) {
-        setGeneratedContents(prev => prev.map(c => c.id === contentId ? { ...c, status: "published" } : c));
-        alert(`✅ Published successfully! Post ID: ${postId}`);
+      if (data.success && data.postId) {
+        // Get the post URL from response
+        const postUrl = data.post?.link || data.url || '';
+        const editUrl = data.post?.edit_url || data.editUrl || '';
+        
+        // Update content state with published URL
+        setGeneratedContents(prev => prev.map(c => c.id === contentId ? { 
+          ...c, 
+          status: "published",
+          publishedUrl: postUrl,
+          wordpressPostId: data.postId
+        } : c));
+        
+        // Show detailed success message including image status and link
+        const imageStatus = data.imageStatus;
+        let message = `✅ Published successfully!\n\n📄 Post ID: ${data.postId}`;
+        
+        if (postUrl) {
+          message += `\n🔗 View Post: ${postUrl}`;
+        }
+        
+        if (imageStatus && imageStatus.sent) {
+          if (imageStatus.setAsFeatured) {
+            message += `\n🖼️ Featured image set successfully!`;
+          } else {
+            message += `\n⚠️ Image sent but not set as featured`;
+          }
+        }
+        
+        // Open post in new tab option
+        const openPost = window.confirm(message + '\n\nWould you like to view the published post?');
+        if (openPost && postUrl) {
+          window.open(postUrl, '_blank');
+        }
       } else {
         alert(`Failed to publish: ${data.error || 'Unknown error'}`);
       }
@@ -503,6 +658,67 @@ export default function AutoPilotEngine() {
       console.error("[WordPress Publish] Error:", err);
       alert('Failed to publish to WordPress. Check your connection.');
     }
+  };
+
+  // Helper function to detect category based on content
+  const detectCategory = (title: string, keywords: string[]): string => {
+    const titleLower = title.toLowerCase();
+    const keywordsLower = keywords.map(k => k.toLowerCase());
+    
+    // Category mapping based on common patterns
+    const categoryMap: Record<string, string[]> = {
+      'Technology': ['technology', 'tech', 'software', 'ai', 'machine learning', 'data', 'cybersecurity', 'programming'],
+      'Business': ['business', 'marketing', 'sales', 'strategy', 'management', 'entrepreneur'],
+      'Marketing': ['marketing', 'seo', 'content', 'social media', 'advertising', 'brand'],
+      'Design': ['design', 'ui', 'ux', 'graphic', 'web design', 'creative'],
+      'Development': ['development', 'coding', 'programming', 'web development', 'app'],
+      'Consulting': ['consulting', 'advisory', 'solutions', 'expertise', 'professional'],
+    };
+    
+    for (const [category, terms] of Object.entries(categoryMap)) {
+      if (terms.some(term => titleLower.includes(term) || keywordsLower.some(k => k.includes(term)))) {
+        return category;
+      }
+    }
+    
+    return 'Uncategorized';
+  };
+
+  // Helper function to format content for WordPress
+  const formatContentForWordPress = (content: string): string => {
+    // Clean up title formatting in content
+    let formatted = content.replace(/^Title:\s*["']?|["']?$/gm, '');
+    
+    // Ensure proper heading formatting
+    formatted = formatted.replace(/^(#+)/gm, '$1 ');
+    
+    // Add proper paragraph breaks
+    formatted = formatted.replace(/\n\n/g, '</p>\n<p>');
+    formatted = '<p>' + formatted + '</p>';
+    
+    // Convert markdown-style bold to HTML
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    return formatted;
+  };
+
+  // Helper function to generate excerpt
+  const generateExcerpt = (content: string, maxLength: number = 150): string => {
+    // Remove HTML tags and get plain text
+    const plainText = content.replace(/<[^>]*>/g, '').replace(/^Title:\s*["']?|["']?$/gm, '');
+    
+    // Get first meaningful sentence or truncate
+    const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    if (sentences.length > 0) {
+      let excerpt = sentences[0].trim();
+      if (excerpt.length > maxLength) {
+        excerpt = excerpt.substring(0, maxLength).replace(/\s+\w*$/, '') + '...';
+      }
+      return excerpt;
+    }
+    
+    return plainText.substring(0, maxLength).replace(/\s+\w*$/, '') + '...';
   };
 
   // Check WordPress connection status
@@ -537,7 +753,9 @@ export default function AutoPilotEngine() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return postsPerDay > 0 && totalPosts > 0 && startDate;
+      case 1: 
+        return postsPerDay > 0 && totalPosts > 0 && startDate && postingTimes.length > 0 && 
+               (!endDate || new Date(endDate) >= new Date(startDate));
       case 2: return selectedLocations.length > 0;
       case 3: return generatedTopics.filter(t => t.selected).length > 0;
       case 4: return generatedTopics.filter(t => t.selected && t.primaryKeywords.length > 0).length > 0;
@@ -723,18 +941,169 @@ export default function AutoPilotEngine() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center"><Calendar className="w-5 h-5 text-white" /></div>
                 <div><h3 className="font-semibold text-slate-900 dark:text-slate-100">Schedule Configuration</h3><p className="text-sm text-slate-600 dark:text-slate-400">Set up your monthly content schedule</p></div>
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Posts Per Day</label><input type="number" min="1" max="5" value={postsPerDay} onChange={(e) => setPostsPerDay(parseInt(e.target.value) || 1)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Posting Time</label><input type="time" value={postingTime} onChange={(e) => setPostingTime(e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Date</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Total Posts for Month</label><input type="number" min="1" max="60" value={totalPosts} onChange={(e) => setTotalPosts(parseInt(e.target.value) || 30)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" /></div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Posts Per Day</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="5" 
+                    value={postsPerDay} 
+                    onChange={(e) => setPostsPerDay(parseInt(e.target.value) || 1)} 
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Total Posts for Month</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="60" 
+                    value={totalPosts} 
+                    onChange={(e) => setTotalPosts(parseInt(e.target.value) || 30)} 
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Date</label>
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)} 
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">End Date (Optional)</label>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => setEndDate(e.target.value)} 
+                    min={startDate}
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  />
+                </div>
               </div>
+              
+              {/* Posting Times Section */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Posting Times</label>
+                  {postingTimes.length < 5 && (
+                    <button
+                      onClick={handleAddPostingTime}
+                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                    >
+                      + Add Time
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {postingTimes.map((time, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={time}
+                        onChange={(e) => handleUpdatePostingTime(index, e.target.value)}
+                        className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                      />
+                      {postingTimes.length > 1 && (
+                        <button
+                          onClick={() => handleRemovePostingTime(index)}
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Past Date Handling */}
+              {pastDateMode !== "normal" && (
+                <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    <h4 className="font-medium text-amber-800 dark:text-amber-200">Past Date Detected</h4>
+                  </div>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+                    Your start date is in the past. How would you like to handle the missed posts?
+                  </p>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="instant"
+                        checked={pastDateMode === "instant"}
+                        onChange={(e) => setPastDateMode(e.target.value as "instant" | "delayed" | "normal")}
+                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Publish Instantly</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Publish all past posts immediately</p>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="delayed"
+                        checked={pastDateMode === "delayed"}
+                        onChange={(e) => setPastDateMode(e.target.value as "instant" | "delayed" | "normal")}
+                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Publish with Delay</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Space out past posts with a delay</p>
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {pastDateMode === "delayed" && (
+                    <div className="mt-4 flex items-center gap-3">
+                      <label className="text-sm font-medium text-amber-700 dark:text-amber-300">Delay Interval:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={delayInterval}
+                        onChange={(e) => setDelayInterval(parseInt(e.target.value) || 1)}
+                        className="w-20 px-3 py-1 border border-amber-300 dark:border-amber-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-amber-900/30 dark:text-amber-100"
+                      />
+                      <select
+                        value={delayUnit}
+                        onChange={(e) => setDelayUnit(e.target.value as "hours" | "days")}
+                        className="px-3 py-1 border border-amber-300 dark:border-amber-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-amber-900/30 dark:text-amber-100"
+                      >
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div className="mt-6 p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><BarChart3 className="w-4 h-4" /><span>{totalPosts} posts over {Math.ceil(totalPosts / postsPerDay)} days, starting {new Date(startDate).toLocaleDateString()}</span></div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <BarChart3 className="w-4 h-4" />
+                  <span>
+                    {(() => {
+                      const actualPosts = endDate ? 
+                        Math.min(totalPosts, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24) + 1) * postsPerDay) :
+                        totalPosts;
+                      const daysNeeded = Math.ceil(actualPosts / postsPerDay);
+                      return `${actualPosts} posts over ${daysNeeded} days, starting ${new Date(startDate).toLocaleDateString()}${endDate ? ` ending ${new Date(endDate).toLocaleDateString()}` : ''}`;
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
             {analysisData && (
@@ -886,20 +1255,44 @@ export default function AutoPilotEngine() {
               </div>
               
               {showPromptTemplates && (
-                <div className="mb-4 grid grid-cols-2 gap-2">
-                  {promptTemplates.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => {
-                        setCustomPrompt(template.prompt);
-                        setShowPromptTemplates(false);
-                      }}
-                      className="p-3 text-left bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
-                    >
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{template.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{template.prompt.substring(0, 80)}...</p>
-                    </button>
-                  ))}
+                <div className="mb-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Categories:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {[...new Set(promptTemplates.map(t => t.category))].map(category => (
+                        <span key={category} className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-xs">
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {promptTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => {
+                          setCustomPrompt(template.prompt);
+                          setShowPromptTemplates(false);
+                        }}
+                        className="p-4 text-left bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">{template.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                              {template.name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3">
+                              {template.prompt.substring(0, 120)}...
+                            </p>
+                            <span className="inline-block mt-2 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
+                              {template.category}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               
@@ -919,49 +1312,207 @@ export default function AutoPilotEngine() {
 
         {currentStep === 5 && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div><h3 className="font-semibold text-slate-900 dark:text-slate-100">Content Generation</h3><p className="text-sm text-slate-600 dark:text-slate-400">Generating full content with featured images</p></div>
-              {!isGeneratingContent && generatedContents.length === 0 && <button onClick={handleGenerateAllContent} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><Play className="w-4 h-4" />Start Generation</button>}
-            </div>
-            {isGeneratingContent && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-center gap-3"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /><span className="text-sm text-blue-700 dark:text-blue-300">Generating content {currentContentIndex + 1} of {generatedTopics.filter(t => t.selected).length}...</span></div>
-                <div className="mt-2 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${((currentContentIndex + 1) / generatedTopics.filter(t => t.selected).length) * 100}%` }} /></div>
-              </div>
-            )}
-            <div className="space-y-6">
-              {generatedContents.map((content, index) => (
-                <div key={content.id} className={`rounded-xl border overflow-hidden transition-all ${content.status === "completed" || content.status === "approved" ? "border-green-500" : content.status === "generating" ? "border-blue-500" : content.status === "failed" ? "border-red-500" : "border-slate-200 dark:border-slate-700"}`}>
-                  {/* Header with image */}
-                  <div className="h-48 bg-slate-100 dark:bg-slate-800 relative">
-                    {content.status === "generating" ? <div className="absolute inset-0 flex items-center justify-center"><div className="text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" /><p className="text-sm text-slate-600 dark:text-slate-400">Generating...</p></div></div> : content.status === "pending" ? <div className="absolute inset-0 flex items-center justify-center"><div className="text-center"><Clock className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-500">Waiting...</p></div></div> : content.imageUrl ? <img src={content.imageUrl} alt={content.title} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = `https://picsum.photos/400/200?random=${index}`; }} /> : <div className="absolute inset-0 flex items-center justify-center"><ImageIcon className="w-8 h-8 text-slate-400" /></div>}
-                    <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium ${content.status === "completed" ? "bg-green-600 text-white" : content.status === "approved" ? "bg-blue-600 text-white" : content.status === "published" ? "bg-purple-600 text-white" : content.status === "generating" ? "bg-amber-600 text-white" : content.status === "failed" ? "bg-red-600 text-white" : "bg-slate-600 text-white"}`}>{content.status.charAt(0).toUpperCase() + content.status.slice(1)}</div>
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
+                    <Play className="w-5 h-5 text-white" />
                   </div>
-                  {/* Content details */}
-                  <div className="p-6 bg-white dark:bg-slate-800">
-                    <h4 className="font-semibold text-lg text-slate-900 dark:text-slate-100 mb-2">{content.title}</h4>
-                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-4">
-                      <span className="flex items-center gap-1"><FileText className="w-4 h-4" />{content.wordCount.toLocaleString()} words</span>
-                      <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{content.scheduledDate.toLocaleDateString()}</span>
-                    </div>
-                    {/* Full Content Preview - No truncation */}
-                    {content.content && content.status !== "pending" && content.status !== "generating" && (
-                      <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg max-h-[400px] overflow-y-auto border border-slate-200 dark:border-slate-600">
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{content.content}</div>
-                        </div>
-                      </div>
-                    )}
-                    {content.status === "completed" && (
-                      <div className="flex items-center gap-3 mt-4">
-                        <button onClick={() => handleApproveContent(content.id)} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">Approve</button>
-                        <button onClick={() => handlePublishNow(content.id)} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Publish Now</button>
-                      </div>
-                    )}
-                    {content.status === "failed" && <p className="text-sm text-red-600 dark:text-red-400 mt-4">{content.error || "Generation failed"}</p>}
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Content Generation</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Generating full content with featured images</p>
                   </div>
                 </div>
-              ))}
+                {!isGeneratingContent && generatedContents.length === 0 && (
+                  <button 
+                    onClick={handleGenerateAllContent} 
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium shadow-lg hover:shadow-xl"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Start Generation
+                  </button>
+                )}
+              </div>
+              
+              {isGeneratingContent && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                        <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                          Generating content {currentContentIndex + 1} of {generatedTopics.filter(t => t.selected).length}
+                        </span>
+                      </div>
+                      <span className="text-sm text-green-600 dark:text-green-400">
+                        {Math.round(((currentContentIndex + 1) / generatedTopics.filter(t => t.selected).length) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-600 transition-all duration-500 ease-out"
+                        style={{ width: `${((currentContentIndex + 1) / generatedTopics.filter(t => t.selected).length) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                      Creating high-quality content with AI-powered writing and image generation...
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {generatedContents.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Generated Content ({generatedContents.filter(c => c.status === "completed" || c.status === "approved").length}/{generatedContents.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setGeneratedContents(prev => prev.map(c => ({ ...c, status: "approved" })))}
+                        className="text-sm text-green-600 hover:text-green-700 dark:text-green-400"
+                      >
+                        Approve All
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {generatedContents.map((content, index) => (
+                      <div 
+                        key={content.id} 
+                        className={`group relative bg-white dark:bg-slate-800 rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${
+                          content.status === "completed" || content.status === "approved" 
+                            ? "border-green-500 hover:shadow-lg" 
+                            : content.status === "generating"
+                            ? "border-blue-500 animate-pulse"
+                            : content.status === "failed"
+                            ? "border-red-500"
+                            : "border-slate-200 dark:border-slate-700"
+                        }`}
+                        onClick={() => expandedContent === content.id ? setExpandedContent(null) : setExpandedContent(content.id)}
+                      >
+                        {/* Featured Image Header */}
+                        <div className="relative h-48 bg-slate-100 dark:bg-slate-700">
+                          {content.status === "generating" ? (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+                                <p className="text-sm text-slate-600 dark:text-slate-400">Generating...</p>
+                              </div>
+                            </div>
+                          ) : content.status === "pending" ? (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <Clock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                                <p className="text-sm text-slate-500">Waiting...</p>
+                              </div>
+                            </div>
+                          ) : content.imageUrl ? (
+                            <img 
+                              src={content.imageUrl} 
+                              alt={content.title} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => { 
+                                e.currentTarget.src = `https://picsum.photos/400/200?random=${index}`; 
+                              }}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <ImageIcon className="w-8 h-8 text-slate-400" />
+                            </div>
+                          )}
+                          
+                          {/* Status Badge */}
+                          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium ${
+                            content.status === "completed" ? "bg-green-600 text-white" : 
+                            content.status === "approved" ? "bg-blue-600 text-white" : 
+                            content.status === "published" ? "bg-purple-600 text-white" : 
+                            content.status === "generating" ? "bg-amber-600 text-white" : 
+                            content.status === "failed" ? "bg-red-600 text-white" : 
+                            "bg-slate-600 text-white"
+                          }`}>
+                            {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
+                          </div>
+                        </div>
+                        
+                        {/* Content Details */}
+                        <div className="p-5">
+                          <h4 className="font-semibold text-lg text-slate-900 dark:text-slate-100 mb-3 line-clamp-2">
+                            {content.title}
+                          </h4>
+                          
+                          <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-4">
+                            <span className="flex items-center gap-1">
+                              <FileText className="w-4 h-4" />
+                              {content.wordCount.toLocaleString()} words
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {content.scheduledDate.toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          {/* Expandable Content Preview */}
+                          {expandedContent === content.id && (
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                                  {content.content}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-3 mt-4">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                expandedContent === content.id ? setExpandedContent(null) : setExpandedContent(content.id);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                            >
+                              <Eye className="w-4 h-4" />
+                              {expandedContent === content.id ? "Hide" : "View"}
+                            </button>
+                            
+                            {content.status === "completed" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApproveContent(content.id);
+                                }}
+                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              >
+                                Approve
+                              </button>
+                            )}
+                            
+                            {content.status === "approved" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePublishNow(content.id);
+                                }}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              >
+                                Publish Now
+                              </button>
+                            )}
+                            
+                            {content.error && (
+                              <span className="text-xs text-red-600 dark:text-red-400">
+                                {content.error}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
