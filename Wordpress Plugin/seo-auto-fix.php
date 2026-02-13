@@ -13,7 +13,7 @@ Text Domain: seo-auto-fix
 
 defined('ABSPATH') || exit;
 
-define('SEO_AUTOFIX_VERSION', '5.3.0');
+define('SEO_AUTOFIX_VERSION', '5.4.0');
 define('SEO_AUDIT_API_URL', 'https://seo-audit-tool.vercel.app');
 
 // Register REST API routes immediately on plugin load
@@ -2759,12 +2759,61 @@ function seo_autofix_generate_sitemap() {
     file_put_contents(ABSPATH . 'sitemap.xml', $xml);
 }
 
+// ==================== CONTENT SANITIZATION WITH EMBEDS ====================
+function seo_autofix_sanitize_content_with_embeds($content) {
+    // Extended allowed HTML tags including iframes for video embeds
+    $allowed_html = wp_kses_allowed_html('post');
+    
+    // Add iframe support for YouTube, Vimeo, and other trusted embeds
+    $allowed_html['iframe'] = array(
+        'src' => true,
+        'width' => true,
+        'height' => true,
+        'frameborder' => true,
+        'allowfullscreen' => true,
+        'allow' => true,
+        'title' => true,
+        'class' => true,
+        'style' => true,
+        'loading' => true,
+    );
+    
+    // Add article, figure, figcaption for better semantic HTML
+    $allowed_html['article'] = array('class' => true, 'id' => true, 'style' => true);
+    $allowed_html['figure'] = array('class' => true, 'id' => true, 'style' => true);
+    $allowed_html['figcaption'] = array('class' => true, 'id' => true, 'style' => true);
+    $allowed_html['section'] = array('class' => true, 'id' => true, 'style' => true);
+    
+    // Sanitize content with extended allowed tags
+    $sanitized = wp_kses($content, $allowed_html);
+    
+    // Ensure only trusted iframe sources (YouTube, Vimeo)
+    $sanitized = preg_replace_callback(
+        '/<iframe[^>]*src=["\']([^"\']+)["\'][^>]*>/i',
+        function($matches) {
+            $src = $matches[1];
+            // Only allow YouTube and Vimeo embeds
+            if (preg_match('/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/', $src)) {
+                return $matches[0]; // Keep the iframe
+            }
+            return ''; // Remove non-trusted iframes
+        },
+        $sanitized
+    );
+    
+    return $sanitized;
+}
+
 // ==================== CONTENT PUBLISHING API ====================
 function seo_autofix_api_publish_content($request) {
     $params = $request->get_json_params() ?: $request->get_params();
     
     $title = sanitize_text_field($params['title'] ?? '');
-    $content = wp_kses_post($params['content'] ?? '');
+    
+    // Allow iframes for YouTube embeds while sanitizing other content
+    $raw_content = $params['content'] ?? '';
+    $content = seo_autofix_sanitize_content_with_embeds($raw_content);
+    
     $location = sanitize_text_field($params['location'] ?? '');
     $content_type = sanitize_text_field($params['contentType'] ?? 'blog post');
     $primary_keywords = array_map('sanitize_text_field', (array) ($params['primaryKeywords'] ?? []));
@@ -2986,7 +3035,7 @@ function seo_autofix_api_publish_content($request) {
     
     return new WP_REST_Response(array(
         'success' => true,
-        'pluginVersion' => '5.3.0-debug-steps',
+        'pluginVersion' => '5.4.0',
         'post' => array(
             'id' => $post->ID,
             'title' => array('rendered' => get_the_title($post)),

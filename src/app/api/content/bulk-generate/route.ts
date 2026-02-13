@@ -15,10 +15,12 @@ export async function POST(request: NextRequest) {
       brandTone,
       targetAudience,
       aboutSummary,
-      generateImages = false,
-      singlePage = true, // New parameter to generate only one page
+      generateImages = true,
+      singlePage = true,
       customPrompt = '',
-      scrapedContent = ''
+      scrapedContent = '',
+      imageStyle = 'watercolor', // New: watercolor, vivid, natural
+      includeYouTube = true, // New: search for related YouTube videos
     } = body;
 
     if (!selectedTopics || selectedTopics.length === 0) {
@@ -28,18 +30,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!selectedLocations || selectedLocations.length === 0) {
-      return NextResponse.json(
-        { error: "At least one location must be selected" },
-        { status: 400 }
-      );
-    }
+    // Locations are now optional - content can be generated without location targeting
+    const locations = selectedLocations && selectedLocations.length > 0 
+      ? selectedLocations 
+      : [''];
 
     console.log("[Bulk Generate] Starting content generation:", {
       topics: selectedTopics.length,
-      locations: selectedLocations.length,
+      locations: locations.length,
       service,
       singlePage,
+      imageStyle,
+      includeYouTube,
     });
 
     // If singlePage is true, only generate one combination (first topic + first location)
@@ -47,11 +49,10 @@ export async function POST(request: NextRequest) {
     if (singlePage) {
       const topic = selectedTopics[0];
       // Use topic's targetLocations if available, otherwise use selectedLocations
-      // If topic has targetLocations array, use its first location; otherwise use selectedLocations[0]
       const topicLocations = topic.targetLocations && topic.targetLocations.length > 0 
         ? topic.targetLocations 
-        : selectedLocations;
-      const location = topicLocations[0] || selectedLocations[0] || '';
+        : locations;
+      const location = topicLocations[0] || locations[0] || '';
       
       combinations = [{
         topic,
@@ -63,15 +64,16 @@ export async function POST(request: NextRequest) {
         generateImages,
         customPrompt,
         scrapedContent,
+        imageStyle,
+        includeYouTube,
       }];
-      console.log("[Bulk Generate] Single page mode: generating 1 piece of content for location:", location);
+      console.log("[Bulk Generate] Single page mode: generating 1 piece of content for location:", location || '(no location)');
     } else {
       // Create all topic-location combinations (original behavior)
       for (const topic of selectedTopics) {
-        // Use topic's targetLocations if available, otherwise use selectedLocations
         const topicLocations = topic.targetLocations && topic.targetLocations.length > 0 
           ? topic.targetLocations 
-          : selectedLocations;
+          : locations;
         
         for (const location of topicLocations) {
           combinations.push({
@@ -84,6 +86,8 @@ export async function POST(request: NextRequest) {
             generateImages,
             customPrompt,
             scrapedContent,
+            imageStyle,
+            includeYouTube,
           });
         }
       }
@@ -96,6 +100,8 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       generateImages,
       singlePage,
+      imageStyle,
+      includeYouTube,
     });
 
     return NextResponse.json({
@@ -220,113 +226,4 @@ async function getTriggerDevTaskResults(taskId: string) {
   }
 }
 
-// Fallback function for when real results aren't available
-function getFallbackResults() {
-  return {
-    success: true,
-    status: "COMPLETED",
-    progress: 100,
-    total: 1,
-    completed: 1,
-    failed: 0,
-    results: [
-      {
-        id: `content_${Date.now()}_0`,
-        title: "Advanced Business Automation Solutions for Digital Transformation",
-        location: "Lahore",
-        contentType: "blog post",
-        content: `Title: Advanced Business Automation Solutions for Digital Transformation in Lahore
-
-Introduction:
-In the heart of Pakistan's technological revolution, Lahore businesses are embracing advanced automation solutions to drive digital transformation. The convergence of artificial intelligence, machine learning, and robotic process automation is creating unprecedented opportunities for businesses to optimize operations and achieve sustainable growth.
-
-The Automation Revolution:
-Business automation has evolved from simple task automation to intelligent, AI-driven systems that can learn, adapt, and make decisions. This transformation is enabling Lahore businesses to compete on a global scale while maintaining operational excellence.
-
-Key Automation Technologies:
-
-1. Artificial Intelligence & Machine Learning:
-AI-powered systems can analyze vast amounts of data, predict trends, and automate complex decision-making processes. Machine learning algorithms continuously improve performance based on historical data and user interactions.
-
-2. Robotic Process Automation (RPA):
-RPA bots handle repetitive, rule-based tasks with precision and speed, freeing human workers to focus on strategic initiatives that require creativity and critical thinking.
-
-3. Intelligent Document Processing:
-Advanced OCR and NLP technologies automatically extract, classify, and process documents, reducing manual data entry by up to 95%.
-
-4. Workflow Automation:
-Sophisticated workflow engines orchestrate complex business processes across multiple departments and systems, ensuring seamless operations and real-time visibility.
-
-Benefits for Lahore Businesses:
-
-Operational Excellence:
-Automation reduces errors, improves consistency, and ensures compliance with industry standards. Businesses report 60-80% reduction in processing times for automated workflows.
-
-Cost Optimization:
-While initial investment varies, businesses typically achieve 30-50% reduction in operational costs within the first year of automation implementation.
-
-Scalability:
-Automated systems can handle increased workload without proportional increases in resources, enabling businesses to scale operations efficiently.
-
-Customer Experience:
-Automation enables 24/7 service availability, faster response times, and personalized interactions that enhance customer satisfaction.
-
-Implementation Strategy:
-
-Phase 1: Assessment and Planning
-- Identify automation opportunities
-- Calculate ROI and prioritize initiatives
-- Develop comprehensive implementation roadmap
-
-Phase 2: Technology Selection
-- Evaluate automation platforms
-- Choose appropriate tools and technologies
-- Ensure integration capabilities with existing systems
-
-Phase 3: Implementation and Testing
-- Deploy automation solutions incrementally
-- Conduct thorough testing and validation
-- Train staff on new processes and tools
-
-Phase 4: Optimization and Scaling
-- Monitor performance and gather feedback
-- Refine processes and expand automation scope
-- Continuously improve based on analytics and insights
-
-Success Metrics:
-- Processing time reduction
-- Error rate improvement
-- Cost savings achieved
-- Customer satisfaction scores
-- Employee productivity gains
-
-Future Trends:
-The future of business automation in Lahore includes:
-- Hyperautomation initiatives
-- AI-driven decision automation
-- Integration with IoT devices
-- Cloud-native automation platforms
-- Low-code/no-code automation tools
-
-Conclusion:
-Business automation is no longer optional for Lahore businesses seeking competitive advantage. By embracing advanced automation technologies, organizations can achieve operational excellence, drive innovation, and position themselves for long-term success in the digital economy.
-
-Call to Action:
-Transform your business with cutting-edge automation solutions. Contact our team today for a comprehensive automation assessment and discover how we can help you achieve digital transformation excellence.`,
-        imageUrl: "https://oaidalleapiprodscus.blob.core.windows.net/private/org-qi2NpQOcFSkA7YMqZvCe4RhG/user-6prhmEqvySDclLWU8fqTeqM2/img-business-automation-lahore.png?st=2026-01-23T02%3A30%3A00Z&se=2026-01-23T04%3A30%3A00Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=77e5a8ec-6bd1-4477-8afc-16703a64f029&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-01-23T02%3A30%3A00Z&ske=2026-01-24T02%3A30%3A00Z&sks=b&skv=2024-08-04&sig=LahoreAutomation2026%3D",
-        wordCount: 3850,
-        keywords: [
-          "business automation solutions",
-          "digital transformation",
-          "AI automation",
-          "process optimization",
-          "operational excellence",
-          "workflow automation",
-          "intelligent systems",
-          "scalable operations"
-        ],
-        status: "completed"
-      }
-    ]
-  };
-}
+// Fallback function is no longer used - all results come from Trigger.dev

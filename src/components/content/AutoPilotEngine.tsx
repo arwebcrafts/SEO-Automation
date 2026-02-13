@@ -585,7 +585,7 @@ export default function AutoPilotEngine() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             selectedTopics: [{ title: topic.title, primaryKeywords: topic.primaryKeywords, secondaryKeywords: topic.secondaryKeywords, contentType: topic.contentType, description: topic.description, searchIntent: "informational" }],
-            selectedLocations: selectedLocations,
+            selectedLocations: selectedLocations.length > 0 ? selectedLocations : [''],
             service: analysisData?.services?.[0] || topic.title,
             brandTone: analysisData?.brandTone || "professional",
             targetAudience: analysisData?.targetAudience || "Business professionals",
@@ -594,20 +594,31 @@ export default function AutoPilotEngine() {
             singlePage: true,
             customPrompt: customPrompt,
             scrapedContent: scrapedContent,
+            imageStyle: "watercolor", // Use watercolor style for featured images
+            includeYouTube: true, // Search for related YouTube videos
           }),
         });
         const result = await response.json();
         const taskId = result.taskId;
         
         let attempts = 0;
-        while (attempts < 60) {
+        while (attempts < 90) { // Increased timeout for better content generation
           await new Promise(resolve => setTimeout(resolve, 2000));
           attempts++;
           const pollResponse = await fetch(`/api/content/bulk-generate?taskId=${taskId}`);
           const pollData = await pollResponse.json();
           if (pollData.success && pollData.results?.[0]) {
             const content = pollData.results[0];
-            setGeneratedContents(prev => prev.map(c => c.topicId === topic.id ? { ...c, title: content.title || topic.title, content: content.content, wordCount: content.wordCount || 0, imageUrl: content.imageUrl, status: "completed" } : c));
+            // Use htmlContent if available, otherwise fall back to content
+            const finalContent = content.htmlContent || content.content;
+            setGeneratedContents(prev => prev.map(c => c.topicId === topic.id ? { 
+              ...c, 
+              title: content.title || topic.title, 
+              content: finalContent, 
+              wordCount: content.wordCount || 0, 
+              imageUrl: content.imageUrl, 
+              status: "completed" 
+            } : c));
             break;
           } else if (pollData.status === "FAILED" || pollData.status === "CRASHED") {
             throw new Error(pollData.error || "Generation failed");
