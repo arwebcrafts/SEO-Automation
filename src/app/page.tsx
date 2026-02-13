@@ -1,5 +1,10 @@
+"use client";
+
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { AuditForm } from "@/components/audit/audit-form";
+import { useAuth } from "@clerk/nextjs";
+import { Header } from "@/components/shared/header";
+import { Footer } from "@/components/shared/footer";
 import { 
   Search, 
   BarChart3, 
@@ -19,11 +24,15 @@ import {
 import Link from "next/link";
 
 export default function HomePage() {
-  return (
-    <SidebarLayout>
-      <div className="min-h-screen">
-        {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 px-4 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-blue-950/20 dark:to-indigo-950/30 overflow-hidden">
+  const { isSignedIn } = useAuth();
+
+  const landingPageContent = (
+    <div className="min-h-screen">
+      {/* Header */}
+      <Header />
+      
+      {/* Hero Section */}
+      <section className="relative py-20 lg:py-32 px-4 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-blue-950/20 dark:to-indigo-950/30 overflow-hidden">
           {/* Animated background elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
@@ -408,7 +417,16 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Footer */}
+        <Footer />
+
       </div>
-    </SidebarLayout>
+    );
+
+  // Only show sidebar for authenticated users
+  return isSignedIn ? (
+    <SidebarLayout>{landingPageContent}</SidebarLayout>
+  ) : (
+    landingPageContent
   );
 }

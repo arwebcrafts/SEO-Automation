@@ -14,8 +14,13 @@ export async function POST(request: NextRequest) {
       existingContent, 
       brandTone, 
       targetAudience,
-      aboutSummary 
+      aboutSummary,
+      count,
+      userKeywords
     } = body;
+
+    // Use count from request or default to 30
+    const topicCount = count || 30;
 
     if (!selectedService) {
       return NextResponse.json(
@@ -24,11 +29,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[AI Topics] Generating topics for service:", selectedService);
+    console.log("[AI Topics] Generating", topicCount, "topics for service:", selectedService);
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+
+    // Include user keywords in the prompt if provided
+    const userKeywordsText = userKeywords?.length > 0 
+      ? `\n- User Target Keywords: ${userKeywords.join(', ')}` 
+      : '';
 
     // Create comprehensive prompt for topic generation
     const prompt = `You are a content strategy expert for a technology company. 
@@ -39,15 +49,18 @@ Company Context:
 - Brand Tone: ${brandTone}
 - Target Audience: ${targetAudience}
 - Existing Content: ${existingContent?.map((p: any) => p.title).join(', ') || 'None'}
-- Target Locations: ${locations?.join(', ') || 'Not specified'}
+- Target Locations: ${locations?.join(', ') || 'Not specified'}${userKeywordsText}
 
-Generate 8-10 high-quality blog post and landing page topics that will:
+Generate EXACTLY ${topicCount} high-quality blog post and landing page topics that will:
 1. Target the ${targetAudience} audience
 2. Incorporate the ${selectedService} service
 3. Have SEO potential with specific keywords
-4. Be location-specific where relevant
+4. Be location-specific where relevant (use the target locations provided)
 5. Fill gaps in existing content
 6. Match the ${brandTone} brand tone
+${userKeywordsText ? '7. Incorporate the user target keywords naturally into topics' : ''}
+
+IMPORTANT: You MUST generate exactly ${topicCount} topics, no more, no less.
 
 For each topic, provide:
 - A compelling title (60-70 characters max)
@@ -81,20 +94,23 @@ Return ONLY a valid JSON object with this structure:
   ]
 }`;
 
+    // Calculate max tokens based on topic count (approximately 150 tokens per topic)
+    const maxTokens = Math.min(16000, Math.max(2000, topicCount * 200));
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Faster model for topic generation
       messages: [
         {
           role: "system",
-          content: "You are a content strategy expert. Always respond with valid JSON only. Be concise and fast."
+          content: `You are a content strategy expert. Always respond with valid JSON only. You MUST generate exactly ${topicCount} topics - no more, no less. Be creative and diverse in your topics.`
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.7,
-      max_tokens: 1500, // Reduced tokens for faster response
+      temperature: 0.8, // Slightly higher for more diverse topics
+      max_tokens: maxTokens, // Dynamic tokens based on topic count
       response_format: { type: "json_object" }, // Force JSON response
     });
 

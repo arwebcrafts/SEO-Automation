@@ -74,6 +74,8 @@ export default function AutoPilotEngine() {
   const [userKeywords, setUserKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [isGeneratingLSI, setIsGeneratingLSI] = useState(false);
+  const [generatedLSIKeywords, setGeneratedLSIKeywords] = useState<string[]>([]);
   
   const [generatedTopics, setGeneratedTopics] = useState<GeneratedTopic[]>([]);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
@@ -311,6 +313,45 @@ export default function AutoPilotEngine() {
     checkPastDate();
   }, [startDate]);
 
+  // Auto-generate topics when entering step 3
+  useEffect(() => {
+    if (currentStep === 3 && generatedTopics.length === 0 && !isGeneratingTopics && !isLoadingAnalysis) {
+      handleGenerateTopics();
+    }
+  }, [currentStep, isLoadingAnalysis]);
+
+  // Auto-generate LSI keywords when user adds keywords
+  const generateLSIKeywords = async (seedKeywords: string[]) => {
+    if (seedKeywords.length === 0 || isGeneratingLSI) return;
+    
+    setIsGeneratingLSI(true);
+    try {
+      const response = await fetch("/api/content/generate-lsi-keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seedKeywords,
+          count: Math.max(totalPosts + 10, 40), // Generate more than post count
+          locations: selectedLocations,
+        }),
+      });
+      
+      const result = await response.json();
+      if (result.success && result.keywords) {
+        setGeneratedLSIKeywords(result.keywords);
+        // Add LSI keywords to userKeywords (excluding duplicates)
+        const newKeywords = result.keywords.filter((k: string) => 
+          !userKeywords.includes(k) && !seedKeywords.includes(k)
+        );
+        setUserKeywords(prev => [...prev, ...newKeywords]);
+      }
+    } catch (err) {
+      console.error("Failed to generate LSI keywords:", err);
+    } finally {
+      setIsGeneratingLSI(false);
+    }
+  };
+
   const loadAnalysisData = async () => {
     setIsLoadingAnalysis(true);
     try {
@@ -318,9 +359,10 @@ export default function AutoPilotEngine() {
       const data = await response.json();
       if (data.success && data.data) {
         setAnalysisData(data.data);
-        if (data.data.locations?.length > 0) {
-          setSelectedLocations(data.data.locations.slice(0, 3));
-        }
+        // Don't auto-select default locations - let user add their own
+        // if (data.data.locations?.length > 0) {
+        //   setSelectedLocations(data.data.locations.slice(0, 3));
+        // }
         
         // Use scraped content from the API response (fetched from database)
         if (data.data.scrapedContent) {
@@ -355,8 +397,16 @@ export default function AutoPilotEngine() {
 
   const handleAddKeyword = () => {
     if (keywordInput.trim() && !userKeywords.includes(keywordInput.trim())) {
-      setUserKeywords([...userKeywords, keywordInput.trim()]);
+      const newKeyword = keywordInput.trim();
+      const updatedKeywords = [...userKeywords, newKeyword];
+      setUserKeywords(updatedKeywords);
       setKeywordInput("");
+      
+      // Auto-generate LSI keywords after adding a keyword
+      // Only generate if we have at least 1 keyword and haven't generated yet
+      if (updatedKeywords.length >= 1 && generatedLSIKeywords.length === 0) {
+        generateLSIKeywords(updatedKeywords);
+      }
     }
   };
 
@@ -418,7 +468,8 @@ export default function AutoPilotEngine() {
     setIsGeneratingTopics(true);
     setTopicsError(null);
     try {
-      const selectedTopicsCount = Math.min(totalPosts, 30);
+      // Generate exactly the number of topics user requested (no limit of 30)
+      const selectedTopicsCount = totalPosts;
       const scheduledDates = generateScheduledDates(selectedTopicsCount);
       
       const response = await fetch("/api/content/ai-topics", {
@@ -1137,13 +1188,50 @@ export default function AutoPilotEngine() {
                 <Upload className="w-4 h-4 text-slate-500" /><span className="text-sm text-slate-600 dark:text-slate-400">Upload Keywords File (.txt, .csv)</span>
                 <input type="file" accept=".txt,.csv" onChange={handleKeywordFileUpload} className="hidden" />
               </label>
+              {isGeneratingLSI && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-700 dark:text-blue-300">Generating related LSI keywords for better SEO...</span>
+                  </div>
+                </div>
+              )}
               {userKeywords.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {userKeywords.map((keyword, index) => (
-                    <span key={index} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm">
-                      {keyword}<button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:text-green-900 dark:hover:text-green-100"><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {generatedLSIKeywords.length > 0 
+                        ? `${userKeywords.length} keywords (including ${generatedLSIKeywords.length} AI-generated LSI keywords)`
+                        : `${userKeywords.length} keywords`
+                      }
+                    </p>
+                    {generatedLSIKeywords.length === 0 && userKeywords.length > 0 && !isGeneratingLSI && (
+                      <button 
+                        onClick={() => generateLSIKeywords(userKeywords)}
+                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                      >
+                        Generate more related keywords
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                    {userKeywords.map((keyword, index) => {
+                      const isLSI = generatedLSIKeywords.includes(keyword);
+                      return (
+                        <span 
+                          key={index} 
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                            isLSI 
+                              ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
+                              : "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                          }`}
+                        >
+                          {keyword}
+                          <button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:opacity-70"><X className="w-3 h-3" /></button>
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -1182,12 +1270,26 @@ export default function AutoPilotEngine() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div><h3 className="font-semibold text-slate-900 dark:text-slate-100">AI-Generated Topics</h3><p className="text-sm text-slate-600 dark:text-slate-400">Review and select topics for your monthly content plan</p></div>
-              <button onClick={handleGenerateTopics} disabled={isGeneratingTopics} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                {isGeneratingTopics ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Sparkles className="w-4 h-4" />Generate Topics</>}
-              </button>
+              {generatedTopics.length > 0 && (
+                <button onClick={handleGenerateTopics} disabled={isGeneratingTopics} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {isGeneratingTopics ? <><Loader2 className="w-4 h-4 animate-spin" />Regenerating...</> : <><RefreshCw className="w-4 h-4" />Regenerate Topics</>}
+                </button>
+              )}
             </div>
             {topicsError && <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"><p className="text-sm text-red-700 dark:text-red-300">{topicsError}</p></div>}
-            {generatedTopics.length > 0 ? (
+            {isGeneratingTopics ? (
+              <div className="text-center py-16 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+                <div className="max-w-md mx-auto">
+                  <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-6" />
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Generating {totalPosts} Topics...</h3>
+                  <p className="text-slate-600 dark:text-slate-400 mb-4">AI is creating your personalized content plan based on your keywords and locations.</p>
+                  <div className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-600 animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">This may take a moment for {totalPosts} topics...</p>
+                </div>
+              </div>
+            ) : generatedTopics.length > 0 ? (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {generatedTopics.map((topic, index) => (
                   <div key={topic.id} className={`p-4 rounded-xl border-2 transition-all ${topic.selected ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 opacity-60"}`}>
@@ -1204,7 +1306,7 @@ export default function AutoPilotEngine() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700"><Sparkles className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" /><p className="text-slate-600 dark:text-slate-400">Click "Generate Topics" to create your monthly content plan</p></div>
+              <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700"><Sparkles className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" /><p className="text-slate-600 dark:text-slate-400">Topics will be generated automatically...</p></div>
             )}
             {generatedTopics.length > 0 && (
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
