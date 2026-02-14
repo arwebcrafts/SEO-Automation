@@ -86,6 +86,8 @@ export default function AutoPilotEngine() {
   
   const [expandedContent, setExpandedContent] = useState<string | null>(null);
   const [viewingContent, setViewingContent] = useState<any>(null);
+  const [previewMode, setPreviewMode] = useState<"preview" | "code">("preview");
+  const [fullPreviewContent, setFullPreviewContent] = useState<GeneratedContent | null>(null);
   
   const [generatedContents, setGeneratedContents] = useState<GeneratedContent[]>([]);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
@@ -396,17 +398,27 @@ export default function AutoPilotEngine() {
   };
 
   const handleAddKeyword = () => {
-    if (keywordInput.trim() && !userKeywords.includes(keywordInput.trim())) {
-      const newKeyword = keywordInput.trim();
-      const updatedKeywords = [...userKeywords, newKeyword];
-      setUserKeywords(updatedKeywords);
+    if (!keywordInput.trim()) return;
+    
+    // Support comma-separated keywords pasting
+    const inputKeywords = keywordInput
+      .split(/[,\n]/)
+      .map(k => k.trim())
+      .filter(k => k.length > 0 && !userKeywords.includes(k));
+    
+    if (inputKeywords.length === 0) {
       setKeywordInput("");
-      
-      // Auto-generate LSI keywords after adding a keyword
-      // Only generate if we have at least 1 keyword and haven't generated yet
-      if (updatedKeywords.length >= 1 && generatedLSIKeywords.length === 0) {
-        generateLSIKeywords(updatedKeywords);
-      }
+      return;
+    }
+    
+    const updatedKeywords = [...new Set([...userKeywords, ...inputKeywords])];
+    setUserKeywords(updatedKeywords);
+    setKeywordInput("");
+    
+    // Auto-generate LSI keywords after adding keywords
+    // Only generate if we have at least 1 keyword and haven't generated yet
+    if (updatedKeywords.length >= 1 && generatedLSIKeywords.length === 0) {
+      generateLSIKeywords(updatedKeywords);
     }
   };
 
@@ -642,22 +654,38 @@ export default function AutoPilotEngine() {
     // Get WordPress connection from localStorage
     const wpConnection = localStorage.getItem('wp_connection_global');
     if (!wpConnection) {
-      alert('WordPress not connected. Please connect WordPress from the Audit Report page first.');
+      alert('WordPress not connected.\n\nPlease click "Connect WordPress" button at the top of this page to connect your WordPress site first.');
       return;
     }
 
-    const { siteUrl, apiKey } = JSON.parse(wpConnection);
-    if (!siteUrl || !apiKey) {
-      alert('WordPress connection incomplete. Please reconnect from the Audit Report page.');
+    let siteUrl = '';
+    let apiKey = '';
+    
+    try {
+      const parsed = JSON.parse(wpConnection);
+      siteUrl = parsed.siteUrl || '';
+      apiKey = parsed.apiKey || '';
+    } catch (e) {
+      alert('WordPress connection data is corrupted. Please reconnect your WordPress site.');
+      localStorage.removeItem('wp_connection_global');
       return;
     }
     
+    if (!siteUrl || !apiKey) {
+      alert('WordPress connection incomplete.\n\nPlease click "Connect WordPress" button to properly connect your WordPress site.');
+      return;
+    }
+    
+    // Update status to show publishing
+    setGeneratedContents(prev => prev.map(c => c.id === contentId ? { ...c, status: "generating" as const } : c));
+    
     try {
-      // Auto-detect category based on content keywords and title
-      const detectedCategory = detectCategory(content.title, content.keywords);
-      
       // Prepare content with proper formatting
       const formattedContent = formatContentForWordPress(content.content);
+      
+      console.log("[Publish] Starting publish to:", siteUrl);
+      console.log("[Publish] Content title:", content.title);
+      console.log("[Publish] Has image:", !!content.imageUrl);
       
       // Use our Next.js API route with WordPress connection details
       const response = await fetch("/api/wordpress/publish", {
@@ -666,18 +694,20 @@ export default function AutoPilotEngine() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          title: content.title.replace(/^Title:\s*["']?|["']?$/g, '').trim(), // Clean up title formatting
+          title: content.title.replace(/^Title:\s*["']?|["']?$/g, '').trim(),
           content: formattedContent,
-          location: selectedLocations[0] || "Pakistan", 
+          location: selectedLocations[0] || "", 
           contentType: "blog post", 
           imageUrl: content.imageUrl,
           primaryKeywords: content.keywords, 
           status: "publish",
-          wordpressConnection: { siteUrl, apiKey }, // Pass connection details
+          wordpressConnection: { siteUrl, apiKey },
         }),
       });
       
       const data = await response.json();
+      
+      console.log("[Publish] Response:", data);
       
       if (data.success && data.postId) {
         // Get the post URL from response
@@ -718,11 +748,19 @@ export default function AutoPilotEngine() {
           window.open(postUrl, '_blank');
         }
       } else {
-        alert(`Failed to publish: ${data.error || 'Unknown error'}`);
+        // Revert status on failure
+        setGeneratedContents(prev => prev.map(c => c.id === contentId ? { ...c, status: "approved" as const } : c));
+        
+        const errorDetails = data.details ? `\n\nDetails: ${data.details}` : '';
+        alert(`Failed to publish: ${data.error || 'Unknown error'}${errorDetails}\n\nPlease check:\n1. WordPress site is online\n2. SEO AutoFix plugin is installed and activated\n3. API key is correct`);
       }
     } catch (err) {
       console.error("[WordPress Publish] Error:", err);
-      alert('Failed to publish to WordPress. Check your connection.');
+      // Revert status on error
+      setGeneratedContents(prev => prev.map(c => c.id === contentId ? { ...c, status: "approved" as const } : c));
+      
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to publish to WordPress.\n\nError: ${errorMessage}\n\nPlease check:\n1. Your internet connection\n2. WordPress site is online\n3. SEO AutoFix plugin is installed`);
     }
   };
 
@@ -822,7 +860,7 @@ export default function AutoPilotEngine() {
       case 1: 
         return postsPerDay > 0 && totalPosts > 0 && startDate && postingTimes.length > 0 && 
                (!endDate || new Date(endDate) >= new Date(startDate));
-      case 2: return selectedLocations.length > 0;
+      case 2: return true; // Location is now optional - can proceed without it
       case 3: return generatedTopics.filter(t => t.selected).length > 0;
       case 4: return generatedTopics.filter(t => t.selected && t.primaryKeywords.length > 0).length > 0;
       case 5: return generatedContents.filter(c => c.status === "completed" || c.status === "approved").length > 0;
@@ -1192,7 +1230,7 @@ export default function AutoPilotEngine() {
               <div className="flex items-center gap-2 mb-4"><Tag className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-slate-900 dark:text-slate-100">Your Target Keywords</h3></div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Add your own keywords to rank on Google.</p>
               <div className="flex gap-2 mb-4">
-                <input type="text" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} placeholder="Enter keyword (e.g., AI consulting services)" className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
+                <input type="text" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} placeholder="Enter keywords (comma-separated, e.g., SEO services, AI agents, digital marketing)" className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
                 <button onClick={handleAddKeyword} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Add</button>
               </div>
               <label className="flex items-center gap-2 px-4 py-2 mb-4 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors w-fit">
@@ -1572,11 +1610,38 @@ export default function AutoPilotEngine() {
                           
                           {/* Expandable Content Preview */}
                           {expandedContent === content.id && (
-                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
-                              <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                                  {content.content}
+                            <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
+                              {/* Preview/Code Toggle */}
+                              <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700 px-4 py-2 border-b border-slate-200 dark:border-slate-600">
+                                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Content Preview</span>
+                                <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-600 rounded-lg p-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setPreviewMode("preview"); }}
+                                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${previewMode === "preview" ? "bg-white dark:bg-slate-500 text-slate-900 dark:text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setPreviewMode("code"); }}
+                                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${previewMode === "code" ? "bg-white dark:bg-slate-500 text-slate-900 dark:text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
+                                  >
+                                    Code
+                                  </button>
                                 </div>
+                              </div>
+                              
+                              {/* Content Area */}
+                              <div className="p-4 bg-white dark:bg-slate-800 max-h-96 overflow-y-auto">
+                                {previewMode === "preview" ? (
+                                  <div 
+                                    className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-ul:text-slate-700 dark:prose-ul:text-slate-300 prose-li:text-slate-700 dark:prose-li:text-slate-300"
+                                    dangerouslySetInnerHTML={{ __html: content.content }}
+                                  />
+                                ) : (
+                                  <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-900 p-4 rounded-lg overflow-x-auto">
+                                    {content.content}
+                                  </pre>
+                                )}
                               </div>
                             </div>
                           )}
@@ -1586,12 +1651,17 @@ export default function AutoPilotEngine() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                expandedContent === content.id ? setExpandedContent(null) : setExpandedContent(content.id);
+                                if (expandedContent === content.id) {
+                                  setExpandedContent(null);
+                                } else {
+                                  setExpandedContent(content.id);
+                                  setPreviewMode("preview"); // Default to preview mode
+                                }
                               }}
                               className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
                             >
                               <Eye className="w-4 h-4" />
-                              {expandedContent === content.id ? "Hide" : "View"}
+                              {expandedContent === content.id ? "Hide" : "Preview"}
                             </button>
                             
                             {content.status === "completed" && (

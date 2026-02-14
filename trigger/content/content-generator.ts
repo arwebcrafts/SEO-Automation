@@ -215,32 +215,37 @@ async function generateContentForCombination(combination: ContentCombination): P
 }
 
 function createSystemPrompt(combination: ContentCombination): string {
-  return `You are an expert SEO content writer and digital marketing specialist. You create high-quality, engaging, and SEO-optimized content that ranks well on Google.
+  return `You are a world-class content writer who creates publication-ready articles. Your content reads like it was written by an expert human, not AI.
 
-Your writing style:
-- ${combination.brandTone} tone
-- Targeted at ${combination.targetAudience}
-- Clear, concise, and valuable
-- Uses proper heading hierarchy (H2, H3, H4)
-- Includes bullet points and numbered lists for readability
-- Naturally incorporates keywords without keyword stuffing
-- Provides actionable insights and practical value
-- Uses transition words for better flow
-- Includes statistics and data when relevant
-- Ends with a clear call-to-action
+WRITING PRINCIPLES:
+- Write in a ${combination.brandTone} tone for ${combination.targetAudience}
+- Every sentence must provide value - no filler
+- Be specific and concrete, never vague
+- Use real examples, numbers, and actionable advice
+- Write like you're explaining to a smart friend
 
-Format your content with:
-- Engaging introduction that hooks the reader
-- Well-structured body with clear H2 and H3 headings
-- Short paragraphs (2-4 sentences max)
-- Bullet points for lists and key takeaways
-- A compelling conclusion with CTA
+STRUCTURE RULES:
+- Start with a hook that immediately addresses the reader's problem or goal
+- Use ## for main sections (H2) and ### for subsections (H3) - NEVER use #### 
+- Keep paragraphs to 2-3 sentences maximum
+- Use bullet points sparingly and only for actual lists
+- Each section should flow naturally to the next
 
-Do NOT include:
-- Generic phrases like "In today's world" or "In conclusion"
-- Excessive use of passive voice
-- Redundant or filler content
-- The word "crucial" or "vital" more than once`;
+ABSOLUTELY FORBIDDEN:
+- "In today's [world/landscape/era]..." or any variation
+- "In this article, we will..." or similar meta-references  
+- "It's important to note that..." or "It's worth mentioning..."
+- "In conclusion..." or "To sum up..."
+- Generic examples like "Consider a restaurant chain" - use specific, believable scenarios
+- Overusing "leverage", "utilize", "crucial", "vital", "robust", "seamless"
+- Numbered lists inside other numbered lists
+- Headers with numbers (like "#### 1. Something") - just use the header text
+
+KEYWORD INTEGRATION:
+- Weave keywords naturally into the text
+- Don't force keywords where they don't fit
+- Vary keyword placement - some in headings, some in body text
+- Never stuff keywords unnaturally`;
 }
 
 async function generateImageForContent(combination: ContentCombination): Promise<string> {
@@ -439,6 +444,20 @@ function formatContentAsHTML(
 `;
   }
   
+  // Add placeholder for WordPress uploaded image at the end
+  // The WordPress plugin will replace {{WORDPRESS_IMAGE_URL}} with the actual uploaded image URL
+  const altText = title.replace(/['"]/g, '');
+  html += `
+
+<!-- WordPress Featured Image (will be replaced by plugin with permanent URL) -->
+<div class="wordpress-featured-image" style="margin-top: 2rem; text-align: center;">
+  <figure style="margin: 0;">
+    <img src="{{WORDPRESS_IMAGE_URL}}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 8px;" />
+    <figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;"><em>Featured: ${altText}</em></figcaption>
+  </figure>
+</div>
+`;
+  
   html += `\n</article>`;
   
   return html;
@@ -516,14 +535,17 @@ ${combination.topic.secondaryKeywords.map(k => `- "${k}"`).join('\n')}
    - Bullet points for lists
    - Short paragraphs (2-4 sentences)
 ${customPromptSection}
-**IMPORTANT:**
-- Do NOT start with "In today's..." or similar generic phrases
-- Do NOT use the word "crucial" or "vital" more than once
-- Make every sentence add value
-- Be specific and practical, not vague and generic
-- Write like an expert who genuinely wants to help the reader
+**CRITICAL RULES - FOLLOW EXACTLY:**
+1. First sentence must hook the reader with a specific benefit, question, or bold statement
+2. NEVER start with "In today's...", "In the rapidly evolving...", or any variation
+3. NEVER use #### headers - only ## and ### are allowed
+4. NEVER put numbers before headers like "#### 1. Something" - just use "### Something"
+5. Use specific, believable examples - NOT generic ones like "a restaurant chain"
+6. Include at least one specific statistic or data point (cite industry knowledge)
+7. Every paragraph must provide actionable value
+8. End with a specific, compelling call-to-action (not generic "contact us")
 
-Begin writing the ${combination.topic.contentType} now:`;
+Begin writing the ${combination.topic.contentType} now - remember, start with an engaging hook, not a generic intro:`;
 }
 
 function createImagePrompt(combination: ContentCombination, imageStyle: string = "watercolor"): string {

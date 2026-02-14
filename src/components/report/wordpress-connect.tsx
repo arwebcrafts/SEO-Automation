@@ -30,7 +30,7 @@ export function WordPressConnect({ domain, onConnectionChange }: WordPressConnec
   const [apiKey, setApiKey] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
-  const [connectMode, setConnectMode] = useState<"manual" | "auto" | "fix">("manual");
+  const [connectMode, setConnectMode] = useState<"manual" | "auto" | "fix">("auto");
   const [handshakeStatus, setHandshakeStatus] = useState<"idle" | "pending" | "approved" | "error">("idle");
   const [connectToken, setConnectToken] = useState("");
   const [authUrl, setAuthUrl] = useState("");

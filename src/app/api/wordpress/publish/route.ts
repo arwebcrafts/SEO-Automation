@@ -90,37 +90,141 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // PRE-UPLOAD IMAGE: Download image here (from OpenAI temp URL) and upload to WordPress BEFORE creating post
+    // This ensures the image is in WordPress media library with a permanent URL
+    let preUploadedMediaId = 0;
+    let preUploadedMediaUrl = "";
+    
+    if (processedImageUrl) {
+      console.log("[WordPress Publish] PRE-UPLOADING IMAGE to WordPress first...");
+      console.log("[WordPress Publish] Image URL:", processedImageUrl);
+      
+      try {
+        // Step 1: Download image from OpenAI temp URL (from our server, which has access)
+        const imageDownloadResponse = await fetch(processedImageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
+        
+        if (!imageDownloadResponse.ok) {
+          console.warn("[WordPress Publish] Failed to download image:", imageDownloadResponse.status);
+        } else {
+          const imageBuffer = await imageDownloadResponse.arrayBuffer();
+          const contentType = imageDownloadResponse.headers.get('content-type') || 'image/png';
+          
+          // Determine file extension
+          let fileExt = 'png';
+          if (contentType.includes('jpeg') || contentType.includes('jpg')) fileExt = 'jpg';
+          else if (contentType.includes('png')) fileExt = 'png';
+          else if (contentType.includes('gif')) fileExt = 'gif';
+          else if (contentType.includes('webp')) fileExt = 'webp';
+          
+          // Use a safe filename format that won't be mistaken for phone numbers
+          const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+          const randomStr = Math.random().toString(36).substring(2, 8);
+          const fileName = `featured-img-${dateStr}-${randomStr}.${fileExt}`;
+          console.log("[WordPress Publish] Image downloaded successfully, size:", imageBuffer.byteLength, "bytes");
+          
+          // Step 2: Upload to WordPress Media Library via REST API
+          const mediaUploadResponse = await fetch(`${WORDPRESS_URL}/wp-json/wp/v2/media`, {
+            method: "POST",
+            headers: {
+              "Content-Disposition": `attachment; filename="${fileName}"`,
+              "Content-Type": contentType,
+              "X-SEO-AutoFix-Key": API_KEY,
+            },
+            body: Buffer.from(imageBuffer),
+          });
+          
+          console.log("[WordPress Publish] Media upload response status:", mediaUploadResponse.status);
+          
+          if (mediaUploadResponse.ok) {
+            const mediaData = await mediaUploadResponse.json();
+            preUploadedMediaId = mediaData.id || 0;
+            preUploadedMediaUrl = mediaData.source_url || mediaData.guid?.rendered || "";
+            console.log("[WordPress Publish] PRE-UPLOAD SUCCESS! Media ID:", preUploadedMediaId, "URL:", preUploadedMediaUrl);
+          } else {
+            const mediaErrorText = await mediaUploadResponse.text();
+            console.warn("[WordPress Publish] Media upload failed:", mediaErrorText);
+            
+            // Try using our plugin's upload endpoint instead
+            console.log("[WordPress Publish] Trying plugin upload endpoint as fallback...");
+            const pluginUploadResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/media/upload`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-SEO-AutoFix-Key": API_KEY,
+              },
+              body: JSON.stringify({
+                image_data: Buffer.from(imageBuffer).toString('base64'),
+                filename: fileName,
+                mime_type: contentType,
+                title: title,
+              }),
+            });
+            
+            if (pluginUploadResponse.ok) {
+              const pluginMediaData = await pluginUploadResponse.json();
+              preUploadedMediaId = pluginMediaData.attachment_id || pluginMediaData.id || 0;
+              preUploadedMediaUrl = pluginMediaData.url || "";
+              console.log("[WordPress Publish] Plugin upload SUCCESS! Media ID:", preUploadedMediaId);
+            }
+          }
+        }
+      } catch (preUploadError) {
+        console.warn("[WordPress Publish] Pre-upload failed:", preUploadError);
+      }
+    }
+    
+    // Replace placeholder in content with pre-uploaded WordPress URL
+    let processedContent = content;
+    if (preUploadedMediaUrl) {
+      // Replace {{WORDPRESS_IMAGE_URL}} placeholder
+      processedContent = processedContent.replace(/\{\{WORDPRESS_IMAGE_URL\}\}/g, preUploadedMediaUrl);
+      
+      // Also replace the temporary OpenAI blob URLs with WordPress URL
+      processedContent = processedContent.replace(
+        /https:\/\/oaidalleapiprodscus\.blob\.core\.windows\.net\/[^"'\s>]+/g,
+        preUploadedMediaUrl
+      );
+      
+      console.log("[WordPress Publish] Replaced placeholders and temp URLs in content with:", preUploadedMediaUrl);
+    }
+
     // Call the real WordPress plugin API
-    console.log("[WordPress Publish] Sending image URL:", processedImageUrl);
-    console.log("[WordPress Publish] Image URL type:", typeof processedImageUrl);
-    console.log("[WordPress Publish] Image URL length:", processedImageUrl?.length);
+    console.log("[WordPress Publish] Sending to WordPress plugin...");
     
     // Prepare the request payload with enhanced image handling
     const requestPayload = {
       title,
-      content,
+      content: processedContent, // Use content with replaced URLs
       location,
       contentType,
       status,
-      // Enhanced image handling - try multiple approaches
-      imageUrl: processedImageUrl?.trim() || "",
-      featured_image: processedImageUrl?.trim() || "",
-      featuredImageUrl: processedImageUrl?.trim() || "",
-      image_url: processedImageUrl?.trim() || "",
+      // Pre-uploaded media ID (if we successfully uploaded it first)
+      preUploadedMediaId: preUploadedMediaId,
+      preUploadedMediaUrl: preUploadedMediaUrl,
+      // Original image URL as fallback
+      imageUrl: preUploadedMediaUrl || processedImageUrl?.trim() || "",
+      featured_image: preUploadedMediaUrl || processedImageUrl?.trim() || "",
+      featuredImageUrl: preUploadedMediaUrl || processedImageUrl?.trim() || "",
+      image_url: preUploadedMediaUrl || processedImageUrl?.trim() || "",
       // New fields for better image handling
-      media_url: processedImageUrl?.trim() || "",
-      thumbnail_url: processedImageUrl?.trim() || "",
+      media_url: preUploadedMediaUrl || processedImageUrl?.trim() || "",
+      thumbnail_url: preUploadedMediaUrl || processedImageUrl?.trim() || "",
       // Explicit instruction to set as featured image
-      set_featured_image: !!processedImageUrl,
-      download_featured_image: !!processedImageUrl,
+      set_featured_image: !!(preUploadedMediaId || processedImageUrl),
+      download_featured_image: !preUploadedMediaId && !!processedImageUrl, // Only download if not pre-uploaded
       // Image metadata
       primaryKeywords,
-      hasImage: !!processedImageUrl,
-      imageSource: processedImageUrl ? "ai-generated" : "none",
-      imageMetadata: processedImageUrl ? {
-        url: processedImageUrl,
+      hasImage: !!(preUploadedMediaId || processedImageUrl),
+      imageSource: preUploadedMediaId ? "pre-uploaded" : (processedImageUrl ? "ai-generated" : "none"),
+      imageMetadata: (preUploadedMediaId || processedImageUrl) ? {
+        url: preUploadedMediaUrl || processedImageUrl,
+        mediaId: preUploadedMediaId,
         type: "featured",
-        source: "ai-generated",
+        source: preUploadedMediaId ? "pre-uploaded" : "ai-generated",
         alt: title || "AI generated image",
         caption: title || "AI generated featured image"
       } : null,
@@ -313,6 +417,41 @@ export async function POST(request: NextRequest) {
     
     console.log("[WordPress Publish] Final image set as featured:", finalImageSetSuccessfully);
     console.log("[WordPress Publish] Final featured media ID:", finalFeaturedMediaId);
+    
+    // If we have a WordPress image URL from the plugin, update the content to replace placeholders
+    const wordpressImageUrl = pluginImageStatus?.wordpressUrl || responseData.imageStatus?.wordpressUrl;
+    const postIdForUpdate = responseData.post?.id || responseData.postId;
+    
+    if (wordpressImageUrl && postIdForUpdate) {
+      console.log("[WordPress Publish] Calling content/update to replace placeholders with WordPress URL:", wordpressImageUrl);
+      
+      try {
+        const updateResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/content/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-SEO-AutoFix-Key": API_KEY,
+          },
+          body: JSON.stringify({
+            post_id: postIdForUpdate,
+            wordpress_image_url: wordpressImageUrl,
+            replace_temp_urls: true
+          }),
+        });
+        
+        if (updateResponse.ok) {
+          const updateData = await updateResponse.json();
+          console.log("[WordPress Publish] Content update result:", updateData);
+        } else {
+          console.warn("[WordPress Publish] Content update failed:", updateResponse.status);
+        }
+      } catch (updateError) {
+        console.warn("[WordPress Publish] Content update error:", updateError);
+      }
+    } else if (postIdForUpdate && !wordpressImageUrl) {
+      // Plugin didn't return WordPress URL, try to get it from the media library
+      console.log("[WordPress Publish] No WordPress image URL returned, checking if we need to update content anyway...");
+    }
 
     // Handle both old and new response formats for backward compatibility
     let postData;
@@ -389,6 +528,37 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[WordPress Publish] Final image status message:", imageStatusMessage);
+    
+    // CRITICAL FIX: If plugin didn't return imageStatus, call the content/update endpoint to fix placeholders
+    const postIdToFix = responseData.post?.id || responseData.postId;
+    if (postIdToFix && Object.keys(pluginImageStatus).length === 0) {
+      console.log("[WordPress Publish] Plugin imageStatus is empty - attempting content update to fix placeholders...");
+      
+      try {
+        // Try to call the content/update endpoint to replace placeholders with any recent image
+        const updateFixResponse = await fetch(`${WORDPRESS_URL}/wp-json/seo-autofix/v1/content/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-SEO-AutoFix-Key": API_KEY,
+          },
+          body: JSON.stringify({
+            post_id: postIdToFix,
+            replace_temp_urls: true,
+            use_recent_image: true  // Flag to use most recent image if no specific URL provided
+          }),
+        });
+        
+        if (updateFixResponse.ok) {
+          const updateFixData = await updateFixResponse.json();
+          console.log("[WordPress Publish] Content update fix result:", updateFixData);
+        } else {
+          console.warn("[WordPress Publish] Content update fix failed:", updateFixResponse.status);
+        }
+      } catch (updateFixError) {
+        console.warn("[WordPress Publish] Content update fix error:", updateFixError);
+      }
+    }
 
     const message = `Content "${title}" published successfully to WordPress! Post ID: ${postData?.id || responseData.postId}\n\nImage Status: ${imageStatusMessage}`;
 

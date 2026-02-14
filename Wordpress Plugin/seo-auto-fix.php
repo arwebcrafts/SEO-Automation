@@ -3,7 +3,7 @@
 Plugin Name: SEO AutoFix Pro
 Plugin URI: https://example.com
 Description: Complete SEO toolkit with remote API - AI alt text, image optimization, broken link checker, meta editor, schema markup, security headers, and auto-fix integration.
-Version: 5.3.0
+Version: 6.0.5
 Requires at least: 5.0
 Requires PHP: 7.0
 Author: SEO AutoFix Team
@@ -13,7 +13,7 @@ Text Domain: seo-auto-fix
 
 defined('ABSPATH') || exit;
 
-define('SEO_AUTOFIX_VERSION', '5.4.0');
+define('SEO_AUTOFIX_VERSION', '6.0.5');
 define('SEO_AUDIT_API_URL', 'https://seo-audit-tool.vercel.app');
 
 // Register REST API routes immediately on plugin load
@@ -353,10 +353,23 @@ function seo_autofix_register_rest_routes() {
         'permission_callback' => 'seo_autofix_api_permission',
     ));
 
+    // Media upload from base64 data
+    register_rest_route($namespace, '/media/upload', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_upload_media',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
     // Content Publishing
     register_rest_route($namespace, '/content/publish', array(
         'methods' => 'POST',
         'callback' => 'seo_autofix_api_publish_content',
+        'permission_callback' => 'seo_autofix_api_permission',
+    ));
+    
+    // Update post content (replace placeholders, update image URLs)
+    register_rest_route($namespace, '/content/update', array(
+        'methods' => 'POST',
+        'callback' => 'seo_autofix_api_update_content',
         'permission_callback' => 'seo_autofix_api_permission',
     ));
 
@@ -2759,12 +2772,88 @@ function seo_autofix_generate_sitemap() {
     file_put_contents(ABSPATH . 'sitemap.xml', $xml);
 }
 
+// ==================== ALLOW IFRAMES GLOBALLY ====================
+// Add filter to allow iframes in post content (for YouTube, Vimeo embeds)
+add_filter('wp_kses_allowed_html', 'seo_autofix_allow_iframes_in_posts', 20, 2);
+function seo_autofix_allow_iframes_in_posts($tags, $context) {
+    if ($context === 'post' || $context === 'acf' || $context === 'data') {
+        $tags['iframe'] = array(
+            'src' => true,
+            'width' => true,
+            'height' => true,
+            'frameborder' => true,
+            'allowfullscreen' => true,
+            'allow' => true,
+            'title' => true,
+            'class' => true,
+            'id' => true,
+            'style' => true,
+            'loading' => true,
+            'name' => true,
+            'sandbox' => true,
+            'referrerpolicy' => true,
+        );
+    }
+    return $tags;
+}
+
 // ==================== CONTENT SANITIZATION WITH EMBEDS ====================
 function seo_autofix_sanitize_content_with_embeds($content) {
-    // Extended allowed HTML tags including iframes for video embeds
+    error_log('[SEO AutoFix] Sanitizing content, length: ' . strlen($content));
+    
+    // For trusted content from our own API, we can be more permissive
+    // First, extract and preserve ALL iframes before any processing
+    $preserved_iframes = array();
+    $iframe_placeholder_prefix = '___SEOAUTOFIX_IFRAME_';
+    
+    // More comprehensive iframe pattern - matches any iframe tag
+    // Use DOTALL mode to match across newlines
+    $iframe_pattern = '/<iframe\b[^>]*>[\s\S]*?<\/iframe>/i';
+    
+    // Also match self-closing iframes
+    $iframe_pattern_selfclose = '/<iframe\b[^>]*\/>/i';
+    
+    // First pass: match full iframes with closing tags
+    $content = preg_replace_callback(
+        $iframe_pattern,
+        function($matches) use (&$preserved_iframes, $iframe_placeholder_prefix) {
+            $iframe = $matches[0];
+            // Only preserve trusted sources (YouTube, Vimeo)
+            if (preg_match('/src=["\'][^"\']*(?:youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/i', $iframe)) {
+                $index = count($preserved_iframes);
+                $preserved_iframes[$index] = $iframe;
+                error_log('[SEO AutoFix] Preserved iframe ' . $index . ': ' . substr(preg_replace('/\s+/', ' ', $iframe), 0, 150));
+                return $iframe_placeholder_prefix . $index . '___';
+            }
+            return ''; // Remove non-trusted iframes
+        },
+        $content
+    );
+    
+    // Second pass: match self-closing iframes
+    $content = preg_replace_callback(
+        $iframe_pattern_selfclose,
+        function($matches) use (&$preserved_iframes, $iframe_placeholder_prefix) {
+            $iframe = $matches[0];
+            if (preg_match('/src=["\'][^"\']*(?:youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/i', $iframe)) {
+                // Convert self-closing to full tag
+                $iframe = preg_replace('/\/>$/', '></iframe>', $iframe);
+                $index = count($preserved_iframes);
+                $preserved_iframes[$index] = $iframe;
+                error_log('[SEO AutoFix] Preserved self-closing iframe ' . $index);
+                return $iframe_placeholder_prefix . $index . '___';
+            }
+            return '';
+        },
+        $content
+    );
+    
+    error_log('[SEO AutoFix] Preserved ' . count($preserved_iframes) . ' iframes total');
+    
+    // Extended allowed HTML tags - include iframe in allowed
     $allowed_html = wp_kses_allowed_html('post');
     
-    // Add iframe support for YouTube, Vimeo, and other trusted embeds
+    // Add iframe support
     $allowed_html['iframe'] = array(
         'src' => true,
         'width' => true,
@@ -2784,24 +2873,113 @@ function seo_autofix_sanitize_content_with_embeds($content) {
     $allowed_html['figcaption'] = array('class' => true, 'id' => true, 'style' => true);
     $allowed_html['section'] = array('class' => true, 'id' => true, 'style' => true);
     
+    // Add div with style support
+    $allowed_html['div']['style'] = true;
+    $allowed_html['p']['style'] = true;
+    $allowed_html['span']['style'] = true;
+    $allowed_html['img']['style'] = true;
+    $allowed_html['img']['decoding'] = true;
+    
     // Sanitize content with extended allowed tags
     $sanitized = wp_kses($content, $allowed_html);
     
-    // Ensure only trusted iframe sources (YouTube, Vimeo)
-    $sanitized = preg_replace_callback(
-        '/<iframe[^>]*src=["\']([^"\']+)["\'][^>]*>/i',
-        function($matches) {
-            $src = $matches[1];
-            // Only allow YouTube and Vimeo embeds
-            if (preg_match('/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/', $src)) {
-                return $matches[0]; // Keep the iframe
-            }
-            return ''; // Remove non-trusted iframes
-        },
-        $sanitized
-    );
+    // Restore preserved iframes
+    foreach ($preserved_iframes as $index => $iframe) {
+        $placeholder = $iframe_placeholder_prefix . $index . '___';
+        if (strpos($sanitized, $placeholder) !== false) {
+            $sanitized = str_replace($placeholder, $iframe, $sanitized);
+            error_log('[SEO AutoFix] Restored iframe ' . $index);
+        } else {
+            error_log('[SEO AutoFix] WARNING: Placeholder not found for iframe ' . $index . ' (looking for: ' . $placeholder . ')');
+        }
+    }
+    
+    error_log('[SEO AutoFix] Sanitized content length: ' . strlen($sanitized));
     
     return $sanitized;
+}
+
+// ==================== MEDIA UPLOAD API ====================
+function seo_autofix_api_upload_media($request) {
+    $params = $request->get_json_params() ?: $request->get_params();
+    
+    $image_data = $params['image_data'] ?? '';
+    $filename = sanitize_file_name($params['filename'] ?? 'uploaded-image.png');
+    $mime_type = $params['mime_type'] ?? 'image/png';
+    $title = sanitize_text_field($params['title'] ?? '');
+    
+    error_log('[SEO AutoFix] Media upload API called. Filename: ' . $filename);
+    
+    if (empty($image_data)) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'No image data provided'
+        ), 400);
+    }
+    
+    // Decode base64 data
+    $decoded = base64_decode($image_data);
+    if ($decoded === false) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Invalid base64 image data'
+        ), 400);
+    }
+    
+    // Include required files
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    
+    // Create temp file
+    $upload_dir = wp_upload_dir();
+    $temp_file = $upload_dir['basedir'] . '/' . $filename;
+    
+    if (file_put_contents($temp_file, $decoded) === false) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Failed to save temporary file'
+        ), 500);
+    }
+    
+    // Prepare file array for wp_handle_sideload
+    $file_array = array(
+        'name' => $filename,
+        'type' => $mime_type,
+        'tmp_name' => $temp_file,
+        'error' => 0,
+        'size' => strlen($decoded),
+    );
+    
+    // Upload to media library
+    $attachment_id = media_handle_sideload($file_array, 0, $title);
+    
+    // Clean up temp file
+    @unlink($temp_file);
+    
+    if (is_wp_error($attachment_id)) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => $attachment_id->get_error_message()
+        ), 500);
+    }
+    
+    // Set alt text
+    if ($title) {
+        update_post_meta($attachment_id, '_wp_attachment_image_alt', $title);
+    }
+    
+    $attachment_url = wp_get_attachment_url($attachment_id);
+    
+    error_log('[SEO AutoFix] Media upload SUCCESS. ID: ' . $attachment_id . ', URL: ' . $attachment_url);
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'attachment_id' => $attachment_id,
+        'id' => $attachment_id,
+        'url' => $attachment_url,
+        'source_url' => $attachment_url
+    ), 200);
 }
 
 // ==================== CONTENT PUBLISHING API ====================
@@ -2812,7 +2990,14 @@ function seo_autofix_api_publish_content($request) {
     
     // Allow iframes for YouTube embeds while sanitizing other content
     $raw_content = $params['content'] ?? '';
+    
+    // IMPORTANT: Remove any wpautop that might add <br> inside iframes
+    // First sanitize, then clean up any broken HTML
     $content = seo_autofix_sanitize_content_with_embeds($raw_content);
+    
+    // Fix any <br> tags that got inserted inside iframes
+    $content = preg_replace('/<iframe([^>]*)>\s*<br\s*\/?>\s*/i', '<iframe$1>', $content);
+    $content = preg_replace('/\s*<br\s*\/?>\s*<\/iframe>/i', '</iframe>', $content);
     
     $location = sanitize_text_field($params['location'] ?? '');
     $content_type = sanitize_text_field($params['contentType'] ?? 'blog post');
@@ -2837,6 +3022,9 @@ function seo_autofix_api_publish_content($request) {
         'post_author' => get_current_user_id() ?: 1, // Default to admin if no user
     );
     
+    // Temporarily disable any phone number auto-linking filters
+    remove_all_filters('the_content', 999);
+    
     // Insert the post
     $post_id = wp_insert_post($post_data, true);
     
@@ -2853,6 +3041,12 @@ function seo_autofix_api_publish_content($request) {
     update_post_meta($post_id, '_seo_autofix_primary_keywords', $primary_keywords);
     update_post_meta($post_id, '_seo_autofix_generated_by', 'auto-content-engine');
     
+    // Check if image was already pre-uploaded by the API
+    $pre_uploaded_media_id = intval($params['preUploadedMediaId'] ?? 0);
+    $pre_uploaded_media_url = $params['preUploadedMediaUrl'] ?? '';
+    
+    error_log('[SEO AutoFix] Pre-uploaded media ID: ' . $pre_uploaded_media_id . ', URL: ' . $pre_uploaded_media_url);
+    
     // Set featured image if URL provided - try multiple field names
     // IMPORTANT: Don't use esc_url_raw on AI image URLs as it can break them
     $image_url = '';
@@ -2868,19 +3062,60 @@ function seo_autofix_api_publish_content($request) {
     error_log('[SEO AutoFix] Received image URL fields: ' . print_r($raw_urls, true));
     
     foreach ($raw_urls as $url) {
-        if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-            $image_url = $url;
-            break;
+        if (!empty($url)) {
+            // Use a more permissive URL check - OpenAI blob URLs have special chars
+            // Just check if it starts with http:// or https://
+            $trimmed = trim($url);
+            if (preg_match('/^https?:\/\//i', $trimmed)) {
+                $image_url = $trimmed;
+                error_log('[SEO AutoFix] Found valid image URL: ' . substr($trimmed, 0, 100));
+                break;
+            }
         }
     }
     
-    error_log('[SEO AutoFix] Final image URL to process: ' . $image_url);
+    error_log('[SEO AutoFix] Final image URL to process: ' . substr($image_url, 0, 200));
     
     $featured_media_id = 0;
+    $uploaded_image_id = 0; // Track uploaded image separately from featured status
     $image_error = '';
     $debug_steps = array(); // Track each step for debugging
     
-    if (!empty($image_url)) {
+    // PRIORITY 1: If pre-uploaded media ID is provided, use it directly
+    if ($pre_uploaded_media_id > 0) {
+        $debug_steps[] = 'Step 0: Using pre-uploaded media ID: ' . $pre_uploaded_media_id;
+        error_log('[SEO AutoFix] Using pre-uploaded media ID: ' . $pre_uploaded_media_id);
+        
+        // Verify the attachment exists
+        $attachment = get_post($pre_uploaded_media_id);
+        if ($attachment && $attachment->post_type === 'attachment') {
+            $uploaded_image_id = $pre_uploaded_media_id;
+            
+            // Set as featured image
+            $result = set_post_thumbnail($post_id, $pre_uploaded_media_id);
+            if ($result) {
+                $featured_media_id = $pre_uploaded_media_id;
+                $debug_steps[] = 'Step 0a: Pre-uploaded image set as featured successfully';
+                error_log('[SEO AutoFix] Pre-uploaded image set as featured: ' . $pre_uploaded_media_id);
+            } else {
+                // Try direct meta update
+                update_post_meta($post_id, '_thumbnail_id', $pre_uploaded_media_id);
+                $featured_media_id = $pre_uploaded_media_id;
+                $debug_steps[] = 'Step 0b: Pre-uploaded image set via meta update';
+            }
+            
+            // Update alt text
+            if ($title) {
+                update_post_meta($pre_uploaded_media_id, '_wp_attachment_image_alt', sanitize_text_field($title));
+            }
+        } else {
+            $debug_steps[] = 'Step 0: Pre-uploaded media ID invalid or not found';
+            error_log('[SEO AutoFix] Pre-uploaded media ID invalid: ' . $pre_uploaded_media_id);
+        }
+    }
+    
+    // PRIORITY 2: If no pre-uploaded ID, try to upload from URL
+    if ($uploaded_image_id <= 0 && !empty($image_url)) {
         $debug_steps[] = 'Step 1: Image URL received: ' . substr($image_url, 0, 100) . '...';
         error_log('[SEO AutoFix] Processing featured image URL: ' . $image_url);
         
@@ -2888,6 +3123,7 @@ function seo_autofix_api_publish_content($request) {
         $debug_steps[] = 'Step 2: Upload function returned: ' . (is_wp_error($image_id) ? 'WP_Error: ' . $image_id->get_error_message() : $image_id);
         
         if ($image_id && !is_wp_error($image_id) && is_numeric($image_id) && $image_id > 0) {
+            $uploaded_image_id = $image_id; // Store the uploaded image ID regardless of featured status
             $debug_steps[] = 'Step 3: Image uploaded successfully with ID: ' . $image_id;
             error_log('[SEO AutoFix] Image uploaded successfully with ID: ' . $image_id);
             
@@ -2995,6 +3231,22 @@ function seo_autofix_api_publish_content($request) {
             $image_error = is_wp_error($image_id) ? $image_id->get_error_message() : 'Unknown upload error (returned: ' . var_export($image_id, true) . ')';
             $debug_steps[] = 'Step 3: UPLOAD FAILED - ' . $image_error;
             error_log('[SEO AutoFix] Failed to upload featured image: ' . $image_error);
+            
+            // FALLBACK: Try to find the most recently uploaded image (might have been uploaded but ID not returned)
+            global $wpdb;
+            $recent_attachment = $wpdb->get_row(
+                "SELECT ID, guid FROM {$wpdb->posts} 
+                 WHERE post_type = 'attachment' 
+                 AND post_mime_type LIKE 'image/%'
+                 AND post_date > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+                 ORDER BY ID DESC LIMIT 1"
+            );
+            
+            if ($recent_attachment && $recent_attachment->ID > 0) {
+                $uploaded_image_id = $recent_attachment->ID;
+                $debug_steps[] = 'Step 3b: FALLBACK - Found recent attachment ID: ' . $uploaded_image_id;
+                error_log('[SEO AutoFix] FALLBACK: Using recent attachment ID: ' . $uploaded_image_id);
+            }
         }
     } else {
         $debug_steps[] = 'No image URL provided or URL invalid';
@@ -3008,6 +3260,138 @@ function seo_autofix_api_publish_content($request) {
     // Set tags if provided
     if (!empty($tags)) {
         wp_set_post_tags($post_id, $tags, false);
+    }
+    
+    // If image was successfully uploaded (regardless of featured status), update/add it to the content
+    $uploaded_image_url = '';
+    $image_added_to_content = false;
+    
+    // Use uploaded_image_id if available, fall back to featured_media_id
+    $image_id_for_content = ($uploaded_image_id > 0) ? $uploaded_image_id : $featured_media_id;
+    
+    // FALLBACK: If still no image ID, try to find the most recent image uploaded
+    if ($image_id_for_content <= 0 && !empty($image_url)) {
+        global $wpdb;
+        
+        // Try multiple approaches to find the recent image
+        // Approach 1: Find the absolute most recent image attachment (regardless of time)
+        $recent_image = $wpdb->get_row(
+            "SELECT ID, guid, post_date FROM {$wpdb->posts} 
+             WHERE post_type = 'attachment' 
+             AND post_mime_type LIKE 'image/%'
+             ORDER BY ID DESC LIMIT 1"
+        );
+        
+        error_log('[SEO AutoFix] FALLBACK: Most recent attachment: ID=' . ($recent_image ? $recent_image->ID : 'none') . ', date=' . ($recent_image ? $recent_image->post_date : 'none'));
+        
+        if ($recent_image && $recent_image->ID > 0) {
+            // Check if this image was uploaded very recently (within last 10 minutes using WordPress time)
+            $image_time = strtotime($recent_image->post_date);
+            $current_time = current_time('timestamp');
+            $time_diff = $current_time - $image_time;
+            
+            error_log('[SEO AutoFix] FALLBACK: Time diff: ' . $time_diff . ' seconds (current: ' . $current_time . ', image: ' . $image_time . ')');
+            
+            // If image was uploaded in last 10 minutes, use it
+            if ($time_diff >= 0 && $time_diff < 600) {
+                $image_id_for_content = $recent_image->ID;
+                $uploaded_image_id = $recent_image->ID;
+                $debug_steps[] = 'FALLBACK: Found recent image in media library (uploaded ' . $time_diff . 's ago), ID: ' . $image_id_for_content;
+                error_log('[SEO AutoFix] FALLBACK SUCCESS: Using recent image ID ' . $image_id_for_content);
+            } else {
+                // Even if old, still use it as last resort for replacing placeholder
+                $image_id_for_content = $recent_image->ID;
+                $uploaded_image_id = $recent_image->ID;
+                $debug_steps[] = 'FALLBACK (LAST RESORT): Using most recent image in library, ID: ' . $image_id_for_content;
+                error_log('[SEO AutoFix] FALLBACK LAST RESORT: Using image ID ' . $image_id_for_content . ' (uploaded ' . $time_diff . 's ago)');
+            }
+        }
+    }
+    
+    if ($image_id_for_content > 0) {
+        $uploaded_image_url = wp_get_attachment_url($image_id_for_content);
+        $debug_steps[] = 'Step 9: WordPress media URL: ' . $uploaded_image_url . ' (from image ID: ' . $image_id_for_content . ')';
+        error_log('[SEO AutoFix] Got WordPress URL for image ID ' . $image_id_for_content . ': ' . $uploaded_image_url);
+        
+        if ($uploaded_image_url) {
+            // Get the current content
+            $current_content = get_post_field('post_content', $post_id);
+            $updated_content = $current_content;
+            $content_modified = false;
+            
+            // PRIORITY 1: Replace {{WORDPRESS_IMAGE_URL}} placeholder with actual URL
+            if (strpos($updated_content, '{{WORDPRESS_IMAGE_URL}}') !== false) {
+                $updated_content = str_replace('{{WORDPRESS_IMAGE_URL}}', esc_url($uploaded_image_url), $updated_content);
+                $content_modified = true;
+                $image_added_to_content = true;
+                $debug_steps[] = 'Step 9a: Replaced {{WORDPRESS_IMAGE_URL}} placeholder with: ' . $uploaded_image_url;
+                error_log('[SEO AutoFix] Replaced {{WORDPRESS_IMAGE_URL}} placeholder with: ' . $uploaded_image_url);
+            }
+            
+            // PRIORITY 2: Replace temporary OpenAI/blob URLs with WordPress URL
+            $temp_url_patterns = array(
+                '/https:\/\/oaidalleapiprodscus\.blob\.core\.windows\.net\/[^"\'>\s]+/i', // OpenAI DALL-E URLs
+                '/https:\/\/[^"\'>\s]*\.blob\.core\.windows\.net\/[^"\'>\s]+/i', // Any Azure blob URLs
+            );
+            
+            foreach ($temp_url_patterns as $pattern) {
+                if (preg_match($pattern, $updated_content)) {
+                    $debug_steps[] = 'Step 9b: Found temporary image URL, replacing with WordPress URL';
+                    error_log('[SEO AutoFix] Found temporary image URL in content, replacing with: ' . $uploaded_image_url);
+                    
+                    // Replace ALL temporary URLs with the permanent WordPress URL
+                    $updated_content = preg_replace($pattern, $uploaded_image_url, $updated_content);
+                    $content_modified = true;
+                    $image_added_to_content = true;
+                }
+            }
+            
+            // PRIORITY 3: If no placeholders or temp URLs found, add image at the end
+            if (!$content_modified) {
+                $has_wordpress_image = strpos($current_content, 'wordpress-featured-image') !== false;
+                
+                if (!$has_wordpress_image) {
+                    // Add the featured image at the END of the content (before closing article tag if present)
+                    $image_html = sprintf(
+                        '<div class="wordpress-featured-image" style="margin-top: 2rem; text-align: center;">
+                            <figure style="margin: 0;">
+                                <img src="%s" alt="%s" style="max-width: 100%%; height: auto; border-radius: 8px;" />
+                                <figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;"><em>Featured: %s</em></figcaption>
+                            </figure>
+                        </div>',
+                        esc_url($uploaded_image_url),
+                        esc_attr($title),
+                        esc_html($title)
+                    );
+                    
+                    // Insert before </article> if it exists, otherwise append
+                    if (strpos($current_content, '</article>') !== false) {
+                        $updated_content = str_replace('</article>', $image_html . "\n</article>", $current_content);
+                    } else {
+                        $updated_content = $current_content . "\n\n" . $image_html;
+                    }
+                    $content_modified = true;
+                    $image_added_to_content = true;
+                    $debug_steps[] = 'Step 10: Added WordPress image to END of content body';
+                    error_log('[SEO AutoFix] Added WordPress image to end of content: ' . $uploaded_image_url);
+                } else {
+                    $debug_steps[] = 'Step 10: Content already has wordpress-featured-image, skipping';
+                }
+            }
+            
+            // Update post if content was modified
+            if ($content_modified) {
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_content' => $updated_content
+                ));
+                $debug_steps[] = 'Step 11: Post content updated with WordPress image URL';
+                error_log('[SEO AutoFix] Post content updated successfully');
+            }
+        }
+    } else {
+        $debug_steps[] = 'Step 9: No uploaded image ID available to add to content';
+        error_log('[SEO AutoFix] No uploaded image ID available');
     }
     
     // Get the created post object
@@ -3035,7 +3419,7 @@ function seo_autofix_api_publish_content($request) {
     
     return new WP_REST_Response(array(
         'success' => true,
-        'pluginVersion' => '5.4.0',
+        'pluginVersion' => '6.0.5',
         'post' => array(
             'id' => $post->ID,
             'title' => array('rendered' => get_the_title($post)),
@@ -3060,17 +3444,23 @@ function seo_autofix_api_publish_content($request) {
         'featured_media' => $actual_featured_media ?: 0,
         'imageStatus' => array(
             'requested' => !empty($image_url),
-            'url' => substr($image_url, 0, 200),
-            'uploaded' => $featured_media_id > 0,
+            'originalUrl' => substr($image_url, 0, 200),
+            'wordpressUrl' => $uploaded_image_url ?: '',
+            'uploaded' => $uploaded_image_id > 0,
+            'uploadedImageId' => $uploaded_image_id,
             'mediaId' => $featured_media_id,
             'setAsFeatured' => $actual_featured_media > 0,
+            'addedToContent' => $image_added_to_content,
             'thumbnailId' => $actual_featured_media,
             'error' => $image_error,
             'steps' => $debug_steps,
             'debug' => array(
-                'uploadedId' => $featured_media_id,
+                'uploadedId' => $uploaded_image_id,
+                'featuredMediaId' => $featured_media_id,
                 'dbThumbnailId' => $actual_featured_media,
-                'match' => ($featured_media_id == $actual_featured_media && $actual_featured_media > 0)
+                'match' => ($featured_media_id == $actual_featured_media && $actual_featured_media > 0),
+                'wordpressMediaUrl' => $uploaded_image_url,
+                'imageAddedToContent' => $image_added_to_content
             )
         ),
         'message' => "Content published as {$status}"
@@ -3141,6 +3531,113 @@ function seo_autofix_api_set_featured_image($request) {
         'media_id' => $media_id,
         'verified_thumbnail_id' => $verify,
         'message' => $success ? 'Featured image set successfully' : 'Failed to set featured image'
+    ));
+}
+
+// Update post content - replace placeholders, update image URLs
+function seo_autofix_api_update_content($request) {
+    $params = $request->get_json_params() ?: $request->get_params();
+    
+    $post_id = intval($params['post_id'] ?? $params['postId'] ?? 0);
+    $wordpress_image_url = $params['wordpress_image_url'] ?? $params['wordpressImageUrl'] ?? '';
+    $replace_temp_urls = $params['replace_temp_urls'] ?? true;
+    $use_recent_image = $params['use_recent_image'] ?? false;
+    
+    error_log('[SEO AutoFix] Content Update - Post ID: ' . $post_id . ', Image URL: ' . $wordpress_image_url . ', Use Recent: ' . ($use_recent_image ? 'yes' : 'no'));
+    
+    if (!$post_id) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'post_id is required'
+        ), 400);
+    }
+    
+    $post = get_post($post_id);
+    if (!$post) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Post not found'
+        ), 404);
+    }
+    
+    // If no URL provided but use_recent_image is set, find the most recent image in media library
+    if (empty($wordpress_image_url) && $use_recent_image) {
+        global $wpdb;
+        $recent_image = $wpdb->get_row(
+            "SELECT ID, guid FROM {$wpdb->posts} 
+             WHERE post_type = 'attachment' 
+             AND post_mime_type LIKE 'image/%'
+             ORDER BY ID DESC LIMIT 1"
+        );
+        
+        if ($recent_image && $recent_image->ID > 0) {
+            $wordpress_image_url = wp_get_attachment_url($recent_image->ID);
+            error_log('[SEO AutoFix] Content Update - Using most recent image: ID=' . $recent_image->ID . ', URL=' . $wordpress_image_url);
+            
+            // Also try to set this as featured image for the post
+            if (!has_post_thumbnail($post_id)) {
+                set_post_thumbnail($post_id, $recent_image->ID);
+                error_log('[SEO AutoFix] Content Update - Set recent image as featured for post ' . $post_id);
+            }
+        }
+    }
+    
+    $content = $post->post_content;
+    $original_content = $content;
+    $changes = array();
+    
+    // Replace {{WORDPRESS_IMAGE_URL}} placeholder
+    if (!empty($wordpress_image_url) && strpos($content, '{{WORDPRESS_IMAGE_URL}}') !== false) {
+        $content = str_replace('{{WORDPRESS_IMAGE_URL}}', esc_url($wordpress_image_url), $content);
+        $changes[] = 'Replaced {{WORDPRESS_IMAGE_URL}} placeholder';
+        error_log('[SEO AutoFix] Content Update - Replaced placeholder with: ' . $wordpress_image_url);
+    }
+    
+    // Replace temporary OpenAI/blob URLs with WordPress URL
+    if (!empty($wordpress_image_url) && $replace_temp_urls) {
+        $temp_url_patterns = array(
+            '/https:\/\/oaidalleapiprodscus\.blob\.core\.windows\.net\/[^"\'>\s]+/i',
+            '/https:\/\/[^"\'>\s]*\.blob\.core\.windows\.net\/[^"\'>\s]+/i',
+        );
+        
+        foreach ($temp_url_patterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                $content = preg_replace($pattern, esc_url($wordpress_image_url), $content);
+                $changes[] = 'Replaced temporary blob URL with WordPress URL';
+                error_log('[SEO AutoFix] Content Update - Replaced temp URL with: ' . $wordpress_image_url);
+            }
+        }
+    }
+    
+    // Update post if content changed
+    if ($content !== $original_content) {
+        $result = wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $content
+        ), true);
+        
+        if (is_wp_error($result)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $result->get_error_message()
+            ), 500);
+        }
+        
+        error_log('[SEO AutoFix] Content updated successfully. Changes: ' . implode(', ', $changes));
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => 'Content updated successfully',
+            'changes' => $changes,
+            'post_id' => $post_id
+        ));
+    }
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'No changes needed',
+        'changes' => array(),
+        'post_id' => $post_id
     ));
 }
 
