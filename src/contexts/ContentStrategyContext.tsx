@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 // Types
 interface ContentContext {
@@ -47,6 +47,20 @@ interface ActiveDraft {
   sourceSuggestionId?: string;
 }
 
+// Website type for multi-site support
+export interface Website {
+  id: string;
+  name: string;
+  siteUrl: string;
+  apiKey?: string;
+  isActive: boolean;
+  _count?: {
+    scheduledContent: number;
+    keywords: number;
+  };
+  createdAt: string;
+}
+
 interface ContentStrategyContextType {
   // Analysis Data
   analysisData: ContentContext | null;
@@ -75,6 +89,15 @@ interface ContentStrategyContextType {
   currentDomain: string | null;
   setCurrentDomain: (domain: string | null) => void;
 
+  // Active Website (multi-site support)
+  activeWebsite: Website | null;
+  setActiveWebsite: (website: Website | null) => void;
+  
+  // Website Switcher Modal
+  isWebsiteSwitcherOpen: boolean;
+  openWebsiteSwitcher: () => void;
+  closeWebsiteSwitcher: () => void;
+
   // Reset Strategy - clears all state
   resetStrategy: () => void;
 
@@ -97,13 +120,69 @@ export function ContentStrategyProvider({ children }: { children: ReactNode }) {
   const [activeDraft, setActiveDraft] = useState<ActiveDraft | null>(null);
   const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
   const [currentDomain, setCurrentDomain] = useState<string | null>(null);
+  const [activeWebsite, setActiveWebsiteState] = useState<Website | null>(null);
+  const [isWebsiteSwitcherOpen, setIsWebsiteSwitcherOpen] = useState(false);
 
   const STORAGE_KEYS = {
     ANALYSIS: 'seo_analysis_output',
     DISCOVERY: 'seo_discovery_data',
     EVENTS: 'seo_calendar_events',
     DOMAIN: 'seo_current_domain',
+    ACTIVE_WEBSITE: 'seo_active_website',
   };
+
+  // Load active website from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWebsite = localStorage.getItem(STORAGE_KEYS.ACTIVE_WEBSITE);
+      if (savedWebsite) {
+        try {
+          const website = JSON.parse(savedWebsite);
+          setActiveWebsiteState(website);
+          // Also set the domain from the website
+          if (website.siteUrl) {
+            try {
+              const url = new URL(website.siteUrl);
+              setCurrentDomain(url.hostname);
+            } catch {
+              setCurrentDomain(website.siteUrl);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse saved website:", e);
+        }
+      }
+    }
+  }, []);
+
+  // Save active website to localStorage when it changes
+  const setActiveWebsite = (website: Website | null) => {
+    setActiveWebsiteState(website);
+    if (typeof window !== 'undefined') {
+      if (website) {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_WEBSITE, JSON.stringify(website));
+        // Update domain when website changes
+        try {
+          const url = new URL(website.siteUrl);
+          setCurrentDomain(url.hostname);
+        } catch {
+          setCurrentDomain(website.siteUrl);
+        }
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_WEBSITE);
+        setCurrentDomain(null);
+      }
+    }
+    // Clear analysis data when switching websites to ensure fresh data
+    setAnalysisData(null);
+    setAiSuggestions([]);
+    setEvents([]);
+    setActiveDraft(null);
+    setAnalysisRunId(null);
+  };
+
+  const openWebsiteSwitcher = () => setIsWebsiteSwitcherOpen(true);
+  const closeWebsiteSwitcher = () => setIsWebsiteSwitcherOpen(false);
 
   const resetStrategy = () => {
     // Clear all state
@@ -114,10 +193,12 @@ export function ContentStrategyProvider({ children }: { children: ReactNode }) {
     setAnalysisRunId(null);
     setCurrentDomain(null);
 
-    // Clear localStorage
+    // Clear localStorage (but keep active website)
     if (typeof window !== 'undefined') {
-      Object.values(STORAGE_KEYS).forEach(key => {
-        localStorage.removeItem(key);
+      Object.entries(STORAGE_KEYS).forEach(([key, value]) => {
+        if (key !== 'ACTIVE_WEBSITE') {
+          localStorage.removeItem(value);
+        }
       });
     }
   };
@@ -176,6 +257,11 @@ export function ContentStrategyProvider({ children }: { children: ReactNode }) {
         setAnalysisRunId,
         currentDomain,
         setCurrentDomain,
+        activeWebsite,
+        setActiveWebsite,
+        isWebsiteSwitcherOpen,
+        openWebsiteSwitcher,
+        closeWebsiteSwitcher,
         resetStrategy,
         loadFromHistory,
       }}

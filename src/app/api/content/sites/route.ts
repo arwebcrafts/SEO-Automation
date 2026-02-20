@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
-// GET: Fetch WordPress sites
+export const dynamic = "force-dynamic";
+
+// GET: Fetch WordPress sites for authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "default-user";
+    const user = await requireAuth();
 
     const sites = await prisma.wordPressSite.findMany({
       where: {
-        userId,
+        userId: user.id,
         isActive: true,
       },
       include: {
@@ -35,12 +37,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Add new WordPress site
+// POST: Add new WordPress site for authenticated user
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth();
     const body = await request.json();
     const {
-      userId = "default-user",
       name,
       siteUrl,
       apiKey,
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const site = await prisma.wordPressSite.create({
       data: {
-        userId,
+        userId: user.id,
         name,
         siteUrl: normalizedUrl,
         apiKey: apiKey || "",

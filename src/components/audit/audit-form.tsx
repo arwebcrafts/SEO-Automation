@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, SignInButton } from "@clerk/nextjs";
-import { Search, Loader2, Globe, FileSearch, CheckCircle, XCircle, LogIn } from "lucide-react";
+import { Search, Loader2, Globe, FileSearch, CheckCircle, XCircle, LogIn, Zap } from "lucide-react";
 import { PageSelector } from "./page-selector";
 import { runFrontendSmartAudit, type SmartAuditOutput, type FrontendAuditProgress } from "@/lib/frontend-smart-audit";
 
@@ -52,6 +52,10 @@ export function AuditForm() {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const router = useRouter();
 
+  // Progress state for quick audit
+  const [quickAuditProgress, setQuickAuditProgress] = useState(0);
+  const [quickAuditStatus, setQuickAuditStatus] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -73,43 +77,80 @@ export function AuditForm() {
       return;
     }
 
-    // Check if user is authenticated before running audit
-    if (!isSignedIn) {
-      setShowAuthPrompt(true);
-      return;
-    }
-
     if (auditMode === "deep") {
+      // Deep Crawl requires authentication
+      if (!isSignedIn) {
+        setShowAuthPrompt(true);
+        return;
+      }
       await startDeepCrawl(cleanUrl);
     } else {
+      // Quick Audit is FREE - runs entirely on frontend, no auth needed
       await startQuickAudit(cleanUrl);
     }
   };
 
   const startQuickAudit = async (cleanUrl: string) => {
     setIsLoading(true);
+    setQuickAuditProgress(0);
+    setQuickAuditStatus("Fetching page data...");
 
     try {
-      const response = await fetch("/api/audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cleanUrl }),
-      });
+      // Run entirely on frontend using proxy-fetch + frontend analyzers
+      const result = await runFrontendSmartAudit(
+        cleanUrl,
+        [cleanUrl], // Single URL only for Quick Audit
+        undefined,  // No crawl data
+        (progress: FrontendAuditProgress) => {
+          setQuickAuditProgress(progress.progress);
+          setQuickAuditStatus(progress.label);
+        }
+      );
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to start audit");
-      }
-
-      const data = await response.json();
+      const auditId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const domain = new URL(cleanUrl).hostname;
-      
-      sessionStorage.setItem(`audit_${data.id}`, JSON.stringify(data));
-      
-      router.push(`/${domain}?id=${data.id}`);
+
+      const transformedResult = {
+        id: auditId,
+        domain: domain,
+        url: cleanUrl,
+        status: "COMPLETED",
+        overallScore: result.overallScore,
+        overallGrade: result.overallGrade,
+        localSeoScore: result.localSeo?.score ?? null,
+        seoScore: result.seo?.score ?? null,
+        linksScore: result.links?.score ?? null,
+        usabilityScore: result.usability?.score ?? null,
+        performanceScore: result.performance?.score ?? null,
+        socialScore: result.social?.score ?? null,
+        contentScore: result.content?.score ?? null,
+        eeatScore: result.eeat?.score ?? null,
+        technicalSeoScore: result.technicalSeo?.score ?? null,
+        localSeoResults: result.localSeo,
+        seoResults: result.seo,
+        linksResults: result.links,
+        usabilityResults: result.usability,
+        performanceResults: result.performance,
+        socialResults: result.social,
+        technologyResults: result.technology,
+        technicalSeoResults: result.technicalSeo,
+        contentResults: result.content,
+        eeatResults: result.eeat,
+        recommendations: result.recommendations,
+        createdAt: new Date().toISOString(),
+        pageClassifications: result.pageClassifications,
+        auditMapping: result.auditMapping,
+        pagesAnalyzed: result.pagesAnalyzed,
+        pagesFailed: result.pagesFailed,
+      };
+
+      sessionStorage.setItem(`audit_${auditId}`, JSON.stringify(transformedResult));
+      window.location.href = `/${domain}?id=${auditId}`;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start audit. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to analyze. Please try again.");
       setIsLoading(false);
+      setQuickAuditProgress(0);
+      setQuickAuditStatus("");
     }
   };
 
@@ -487,6 +528,45 @@ export function AuditForm() {
     );
   }
 
+  // Show Quick Audit progress UI
+  if (isLoading && auditMode === "quick") {
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border shadow-lg p-8">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-10 h-10 text-amber-600 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-bold">Quick SEO Audit</h2>
+            <p className="text-muted-foreground mt-2">Analyzing your page in real-time...</p>
+          </div>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Progress</span>
+              <span className="text-sm font-medium text-amber-600">{quickAuditProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div 
+                className="bg-gradient-to-r from-amber-500 to-orange-500 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${quickAuditProgress}%` }}
+              />
+            </div>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
+              <span>{quickAuditStatus || "Starting analysis..."}</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <CheckCircle className="w-4 h-4 text-green-500" />
+            <span className="text-xs text-muted-foreground">No sign-up required &bull; 100% free &bull; Frontend-only analysis</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Audit Mode Toggle */}
@@ -517,8 +597,8 @@ export function AuditForm() {
       
       <p className="text-center text-sm text-muted-foreground mb-4">
         {auditMode === "quick" 
-          ? "Analyze your homepage quickly (30 seconds)"
-          : "Crawl all pages for comprehensive analysis (1-2 minutes)"
+          ? "Free instant SEO audit — no sign-up required (~30 seconds)"
+          : "Crawl all pages for comprehensive analysis (1-2 min, requires sign-in)"
         }
       </p>
 
@@ -553,7 +633,7 @@ export function AuditForm() {
         {error && <p className="mt-3 text-destructive text-sm">{error}</p>}
       </form>
 
-      {/* Auth Prompt Modal */}
+      {/* Auth Prompt Modal - Only for Deep Crawl */}
       {showAuthPrompt && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
@@ -562,10 +642,11 @@ export function AuditForm() {
                 <LogIn className="w-8 h-8 text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                Sign In Required
+                Sign In for Deep Crawl
               </h3>
               <p className="text-slate-600 dark:text-slate-400 mb-6">
-                Create a free account to analyze your website and save your audit history.
+                Deep Crawl analyzes all pages on your site and requires a free account. 
+                Or use <button onClick={() => { setShowAuthPrompt(false); setAuditMode("quick"); }} className="text-blue-600 underline font-medium">Quick Audit</button> for free without signing up.
               </p>
               <div className="flex flex-col gap-3">
                 <SignInButton mode="modal">

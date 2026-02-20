@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuth();
     const { id, status, scheduledAt, content, featuredImageUrl, targetService, targetServiceUrl } = await req.json();
 
     if (!id) {
       return NextResponse.json({ error: "Post ID is required" }, { status: 400 });
+    }
+
+    // Verify the post belongs to the user
+    const existingPost = await prisma.scheduledContent.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!existingPost) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // Update the post
@@ -39,13 +50,14 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await requireAuth();
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
     const status = searchParams.get("status");
+    const websiteId = searchParams.get("websiteId");
 
-    const where: any = {};
-    if (userId) where.userId = userId;
+    const where: any = { userId: user.id };
     if (status) where.status = status;
+    if (websiteId) where.wordpressSiteId = websiteId;
 
     const posts = await prisma.scheduledContent.findMany({
       where,

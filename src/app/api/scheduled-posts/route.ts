@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const websiteId = searchParams.get("websiteId");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -18,6 +19,10 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status;
     }
+    
+    if (websiteId) {
+      where.wordpressSiteId = websiteId;
+    }
 
     const [posts, total] = await Promise.all([
       prisma.scheduledContent.findMany({
@@ -25,6 +30,15 @@ export async function GET(request: NextRequest) {
         orderBy: { scheduledFor: "asc" },
         take: limit,
         skip: offset,
+        include: {
+          wordpressSite: {
+            select: {
+              id: true,
+              name: true,
+              siteUrl: true,
+            },
+          },
+        },
       }),
       prisma.scheduledContent.count({ where }),
     ]);

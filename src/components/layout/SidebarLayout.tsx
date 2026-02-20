@@ -36,6 +36,8 @@ import {
 } from "lucide-react";
 import { TopHeader } from "./TopHeader";
 import OnboardingWalkthrough from "@/components/onboarding/OnboardingWalkthrough";
+import WebsiteSwitcher, { WebsiteSelector } from "@/components/content/WebsiteSwitcher";
+import { useContentStrategy, Website } from "@/contexts/ContentStrategyContext";
 
 interface NavItem {
   id: string;
@@ -108,6 +110,16 @@ export default function SidebarLayout({
   const [expandedSections, setExpandedSections] = useState<string[]>(["audit", "content"]);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Get website context
+  const { 
+    activeWebsite, 
+    setActiveWebsite, 
+    isWebsiteSwitcherOpen, 
+    openWebsiteSwitcher, 
+    closeWebsiteSwitcher,
+    resetStrategy 
+  } = useContentStrategy();
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => 
@@ -118,11 +130,17 @@ export default function SidebarLayout({
   };
 
   const handleNewStrategy = () => {
-    if (onNewStrategy) {
-      onNewStrategy();
-    } else {
-      router.push('/content-strategy?view=analysis');
-    }
+    // Open the website switcher modal instead of just resetting
+    openWebsiteSwitcher();
+  };
+
+  const handleWebsiteSelect = (website: Website) => {
+    setActiveWebsite(website);
+    closeWebsiteSwitcher();
+    // Reset strategy data when switching websites
+    resetStrategy();
+    // Navigate to analysis view for the new website
+    router.push('/content-strategy?view=analysis');
   };
 
   const handleNavClick = (item: NavItem) => {
@@ -195,6 +213,16 @@ export default function SidebarLayout({
             )}
           </button>
         </div>
+
+        {/* Website Selector */}
+        {!isCollapsed && (
+          <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+            <WebsiteSelector
+              currentWebsite={activeWebsite}
+              onOpenSwitcher={openWebsiteSwitcher}
+            />
+          </div>
+        )}
 
         {/* New Strategy CTA Button */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-700">
@@ -354,6 +382,14 @@ export default function SidebarLayout({
 
       {/* Onboarding Walkthrough for new users */}
       <OnboardingWalkthrough />
+
+      {/* Website Switcher Modal */}
+      <WebsiteSwitcher
+        isOpen={isWebsiteSwitcherOpen}
+        onClose={closeWebsiteSwitcher}
+        onWebsiteSelect={handleWebsiteSelect}
+        currentWebsiteId={activeWebsite?.id}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 Plugin Name: SEO AutoFix Pro
 Plugin URI: https://example.com
 Description: Complete SEO toolkit with remote API - AI alt text, image optimization, broken link checker, meta editor, schema markup, security headers, and auto-fix integration.
-Version: 6.0.5
+Version: 6.0.6
 Requires at least: 5.0
 Requires PHP: 7.0
 Author: SEO AutoFix Team
@@ -13,7 +13,7 @@ Text Domain: seo-auto-fix
 
 defined('ABSPATH') || exit;
 
-define('SEO_AUTOFIX_VERSION', '6.0.5');
+define('SEO_AUTOFIX_VERSION', '6.0.6');
 define('SEO_AUDIT_API_URL', 'https://seo-audit-tool.vercel.app');
 
 // Register REST API routes immediately on plugin load
@@ -2995,9 +2995,14 @@ function seo_autofix_api_publish_content($request) {
     // First sanitize, then clean up any broken HTML
     $content = seo_autofix_sanitize_content_with_embeds($raw_content);
     
-    // Fix any <br> tags that got inserted inside iframes
-    $content = preg_replace('/<iframe([^>]*)>\s*<br\s*\/?>\s*/i', '<iframe$1>', $content);
-    $content = preg_replace('/\s*<br\s*\/?>\s*<\/iframe>/i', '</iframe>', $content);
+    // Fix any <br> tags that got inserted inside iframes (multiple patterns)
+    $content = preg_replace('/<iframe([^>]*)>\s*<br\s*\/?>\s*/is', '<iframe$1>', $content);
+    $content = preg_replace('/\s*<br\s*\/?>\s*<\/iframe>/is', '</iframe>', $content);
+    $content = preg_replace('/<iframe([^>]*)>[\s\n\r]*<br\s*\/?>[\s\n\r]*/is', '<iframe$1>', $content);
+    $content = preg_replace('/[\s\n\r]*<br\s*\/?>[\s\n\r]*<\/iframe>/is', '</iframe>', $content);
+    
+    // Also clean any content inside iframes (iframes should be empty or self-closing)
+    $content = preg_replace('/<iframe([^>]*)>[^<]*<\/iframe>/is', '<iframe$1></iframe>', $content);
     
     $location = sanitize_text_field($params['location'] ?? '');
     $content_type = sanitize_text_field($params['contentType'] ?? 'blog post');
@@ -3346,29 +3351,30 @@ function seo_autofix_api_publish_content($request) {
                 }
             }
             
-            // PRIORITY 3: If no placeholders or temp URLs found, add image at the end
+            // PRIORITY 3: If no placeholders or temp URLs found, check if image already exists in content
             if (!$content_modified) {
-                $has_wordpress_image = strpos($current_content, 'wordpress-featured-image') !== false;
+                // Check if content already has a featured image at the top
+                $has_featured_image = strpos($current_content, 'featured-image') !== false ||
+                                      strpos($current_content, 'wp-post-image') !== false ||
+                                      strpos($current_content, 'wordpress-featured-image') !== false;
                 
-                if (!$has_wordpress_image) {
-                    // Add the featured image at the END of the content (before closing article tag if present)
+                if (!$has_featured_image) {
+                    // No featured image found - add one at the TOP of the content
                     $image_html = sprintf(
-                        '<div class="wordpress-featured-image" style="margin-top: 2rem; text-align: center;">
-                            <figure style="margin: 0;">
-                                <img src="%s" alt="%s" style="max-width: 100%%; height: auto; border-radius: 8px;" />
-                                <figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;"><em>Featured: %s</em></figcaption>
-                            </figure>
-                        </div>',
+                        '<figure class="featured-image">
+<img src="%s" alt="%s" class="wp-post-image" loading="eager" />
+</figure>
+
+',
                         esc_url($uploaded_image_url),
-                        esc_attr($title),
-                        esc_html($title)
+                        esc_attr($title)
                     );
                     
-                    // Insert before </article> if it exists, otherwise append
-                    if (strpos($current_content, '</article>') !== false) {
-                        $updated_content = str_replace('</article>', $image_html . "\n</article>", $current_content);
+                    // Insert after opening article tag if present, otherwise prepend
+                    if (strpos($current_content, '<article') !== false) {
+                        $updated_content = preg_replace('/(<article[^>]*>)/i', '$1' . "\n" . $image_html, $current_content, 1);
                     } else {
-                        $updated_content = $current_content . "\n\n" . $image_html;
+                        $updated_content = $image_html . $current_content;
                     }
                     $content_modified = true;
                     $image_added_to_content = true;
@@ -3419,7 +3425,7 @@ function seo_autofix_api_publish_content($request) {
     
     return new WP_REST_Response(array(
         'success' => true,
-        'pluginVersion' => '6.0.5',
+        'pluginVersion' => '6.0.6',
         'post' => array(
             'id' => $post->ID,
             'title' => array('rendered' => get_the_title($post)),

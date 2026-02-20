@@ -2,8 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import jsPDF from "jspdf";
 
 // ============================================================================
-// PDF REPORT V2.0 - Print-First Professional Design
+// PDF REPORT V3.0 - 3 Styles, Agency Branding, Modern UI/UX
 // ============================================================================
+
+type ReportStyle = "modern" | "executive" | "minimal";
+
+interface AgencyBranding {
+  companyName?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  tagline?: string;
+  primaryColor?: string; // hex like "#4F46E5"
+  accentColor?: string;  // hex like "#8B5CF6"
+}
 
 interface AuditData {
   domain?: string;
@@ -12,6 +24,8 @@ interface AuditData {
   crawlType?: string;
   pagesScanned?: number;
   createdAt?: string;
+  reportStyle?: ReportStyle;
+  agencyBranding?: AgencyBranding;
   // Legacy category scores
   localSeoScore?: number;
   seoScore?: number;
@@ -49,14 +63,22 @@ interface AuditData {
     technicalDetails?: boolean;
     competitorAnalysis?: boolean;
     linkAnalysis?: boolean;
+    authorityTrust?: boolean;
   };
 }
 
 // ============================================================================
-// DESIGN SYSTEM - Print-First Color Palette
+// HEX -> RGB helper
+// ============================================================================
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
+}
+
+// ============================================================================
+// DESIGN SYSTEM
 // ============================================================================
 const COLORS = {
-  // Base colors - White background for print-friendliness
   white: [255, 255, 255] as [number, number, number],
   background: [250, 251, 252] as [number, number, number],
   
@@ -227,7 +249,7 @@ function stripEmojis(text: string): string {
 // ============================================================================
 // PDF DRAWING HELPERS
 // ============================================================================
-class PDFReportV2 {
+class PDFReportV3 {
   private doc: jsPDF;
   private pageWidth: number;
   private pageHeight: number;
@@ -239,6 +261,10 @@ class PDFReportV2 {
   private overallScore: number;
   private grade: string;
   private createdDate: Date;
+  private style: ReportStyle;
+  private branding: AgencyBranding;
+  private brandPrimary: [number, number, number];
+  private brandAccent: [number, number, number];
 
   constructor(auditData: AuditData) {
     this.doc = new jsPDF();
@@ -249,6 +275,14 @@ class PDFReportV2 {
     this.overallScore = auditData.overallScore ?? 0;
     this.grade = auditData.overallGrade || getGrade(this.overallScore);
     this.createdDate = auditData.createdAt ? new Date(auditData.createdAt) : new Date();
+    this.style = auditData.reportStyle || "modern";
+    this.branding = auditData.agencyBranding || {};
+    this.brandPrimary = this.branding.primaryColor ? hexToRgb(this.branding.primaryColor) : COLORS.primary;
+    this.brandAccent = this.branding.accentColor ? hexToRgb(this.branding.accentColor) : COLORS.accent;
+  }
+
+  private get brandName(): string {
+    return this.branding.companyName || "SEO Audit Tool";
   }
 
   // Draw page header with branding
@@ -261,10 +295,11 @@ class PDFReportV2 {
       this.doc.text(this.domain, MARGIN, 12);
     }
 
-    // SaaS branding on right (small, gray)
+    // Agency/SaaS branding on right
     this.doc.setFontSize(8);
-    this.doc.setTextColor(...COLORS.textMuted);
-    this.doc.text("SEO Audit Tool", this.pageWidth - MARGIN, 12, { align: "right" });
+    this.doc.setTextColor(...this.brandPrimary);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(this.brandName, this.pageWidth - MARGIN, 12, { align: "right" });
 
     // Subtle horizontal separator line
     this.doc.setDrawColor(...COLORS.border);
@@ -276,24 +311,36 @@ class PDFReportV2 {
   private drawPageFooter(pageNum: number, totalPages: number) {
     const footerY = this.pageHeight - 12;
 
-    // Separator line
-    this.doc.setDrawColor(...COLORS.border);
-    this.doc.setLineWidth(0.3);
+    // Separator line - use brand color for modern style
+    if (this.style === "modern") {
+      this.doc.setDrawColor(...this.brandPrimary);
+      this.doc.setLineWidth(0.5);
+    } else {
+      this.doc.setDrawColor(...COLORS.border);
+      this.doc.setLineWidth(0.3);
+    }
     this.doc.line(MARGIN, footerY - 5, this.pageWidth - MARGIN, footerY - 5);
 
-    // Page number centered
+    // Page number on right
     this.doc.setFontSize(8);
     this.doc.setTextColor(...COLORS.textMuted);
-    this.doc.text(`Page ${pageNum} of ${totalPages}`, this.pageWidth / 2, footerY, { align: "center" });
+    this.doc.text(`${pageNum} / ${totalPages}`, this.pageWidth - MARGIN, footerY, { align: "right" });
 
-    // Disclaimer
+    // Agency branding on left
     this.doc.setFontSize(7);
-    this.doc.text(
-      "Generated by SEO Audit Tool. Automated results should be verified by an expert.",
-      this.pageWidth / 2,
-      footerY + 4,
-      { align: "center" }
-    );
+    const footerText = this.branding.companyName 
+      ? `Prepared by ${this.branding.companyName}${this.branding.website ? ' | ' + this.branding.website : ''}`
+      : "Generated by SEO Audit Tool | Automated results should be verified by an expert.";
+    this.doc.setTextColor(...COLORS.textMuted);
+    this.doc.text(footerText, MARGIN, footerY, { align: "left" });
+
+    // Contact info line for agency
+    if (this.branding.email || this.branding.phone) {
+      const contactParts: string[] = [];
+      if (this.branding.email) contactParts.push(this.branding.email);
+      if (this.branding.phone) contactParts.push(this.branding.phone);
+      this.doc.text(contactParts.join(" | "), MARGIN, footerY + 4);
+    }
   }
 
   // Check if we need a new page
@@ -383,12 +430,43 @@ class PDFReportV2 {
     this.doc.text(grade, x, y + 8, { align: "center" });
   }
 
-  // Draw traffic light indicator
+  // Draw checkmark icon
+  private drawCheckIcon(x: number, y: number, size: number, color: [number, number, number]) {
+    this.doc.setDrawColor(...color);
+    this.doc.setLineWidth(size * 0.15);
+    // Draw checkmark path
+    this.doc.line(x - size * 0.35, y, x - size * 0.1, y + size * 0.25);
+    this.doc.line(x - size * 0.1, y + size * 0.25, x + size * 0.35, y - size * 0.3);
+  }
+
+  // Draw warning triangle icon
+  private drawWarningIcon(x: number, y: number, size: number, color: [number, number, number]) {
+    this.doc.setFillColor(...color);
+    // Draw triangle
+    const h = size * 0.9;
+    const w = size;
+    this.doc.triangle(x, y - h/2, x - w/2, y + h/3, x + w/2, y + h/3, "F");
+    // Draw exclamation mark (white)
+    this.doc.setFillColor(...COLORS.white);
+    this.doc.rect(x - size * 0.06, y - h/4, size * 0.12, h * 0.35, "F");
+    this.doc.circle(x, y + h * 0.15, size * 0.08, "F");
+  }
+
+  // Draw X/cross icon
+  private drawCrossIcon(x: number, y: number, size: number, color: [number, number, number]) {
+    this.doc.setDrawColor(...color);
+    this.doc.setLineWidth(size * 0.15);
+    // Draw X
+    this.doc.line(x - size * 0.3, y - size * 0.3, x + size * 0.3, y + size * 0.3);
+    this.doc.line(x + size * 0.3, y - size * 0.3, x - size * 0.3, y + size * 0.3);
+  }
+
+  // Draw traffic light indicator with graphic icons
   private drawTrafficLight(x: number, y: number, count: number, label: string, type: "passed" | "warning" | "error") {
     const colors = {
-      passed: { bg: COLORS.successLight, text: COLORS.success, icon: "OK" },
-      warning: { bg: COLORS.warningLight, text: COLORS.warning, icon: "!" },
-      error: { bg: COLORS.errorLight, text: COLORS.error, icon: "X" },
+      passed: { bg: COLORS.successLight, text: COLORS.success },
+      warning: { bg: COLORS.warningLight, text: COLORS.warning },
+      error: { bg: COLORS.errorLight, text: COLORS.error },
     };
     const c = colors[type];
     
@@ -396,17 +474,30 @@ class PDFReportV2 {
     this.doc.setFillColor(...c.bg);
     this.doc.roundedRect(x, y, 50, 45, 4, 4, "F");
     
-    // Icon circle
+    // Icon circle background
     this.doc.setFillColor(...c.text);
     this.doc.circle(x + 25, y + 14, 8, "F");
-    this.doc.setTextColor(...COLORS.white);
-    this.doc.setFontSize(type === "passed" ? 8 : 12);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.text(c.icon, x + 25, y + 18, { align: "center" });
+    
+    // Draw appropriate icon inside circle
+    const iconX = x + 25;
+    const iconY = y + 14;
+    const iconSize = 6;
+    
+    if (type === "passed") {
+      this.drawCheckIcon(iconX, iconY, iconSize, COLORS.white);
+    } else if (type === "warning") {
+      // For warning, draw exclamation in white
+      this.doc.setFillColor(...COLORS.white);
+      this.doc.rect(iconX - 1, iconY - 4, 2, 5, "F");
+      this.doc.circle(iconX, iconY + 3, 1.2, "F");
+    } else {
+      this.drawCrossIcon(iconX, iconY, iconSize, COLORS.white);
+    }
     
     // Count
     this.doc.setTextColor(...c.text);
     this.doc.setFontSize(18);
+    this.doc.setFont("helvetica", "bold");
     this.doc.text(String(count), x + 25, y + 35, { align: "center" });
     
     // Label
@@ -459,6 +550,65 @@ class PDFReportV2 {
     this.doc.circle(x, y, innerRadius, "F");
   }
 
+  // Draw category icon
+  private drawCategoryIcon(x: number, y: number, category: string, color: [number, number, number]) {
+    this.doc.setDrawColor(...color);
+    this.doc.setFillColor(...color);
+    this.doc.setLineWidth(0.5);
+    
+    const s = 4; // icon size
+    
+    switch(category.toLowerCase()) {
+      case "local seo":
+        // Map pin icon
+        this.doc.circle(x, y - s * 0.3, s * 0.4, "F");
+        this.doc.triangle(x, y + s * 0.7, x - s * 0.3, y, x + s * 0.3, y, "F");
+        break;
+      case "on-page & content":
+      case "on-page seo":
+        // Document/page icon
+        this.doc.rect(x - s * 0.4, y - s * 0.5, s * 0.8, s, "S");
+        this.doc.line(x - s * 0.25, y - s * 0.2, x + s * 0.25, y - s * 0.2);
+        this.doc.line(x - s * 0.25, y + s * 0.1, x + s * 0.25, y + s * 0.1);
+        break;
+      case "technical health":
+      case "technical seo":
+        // Gear/cog icon (simplified)
+        this.doc.circle(x, y, s * 0.3, "S");
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          this.doc.line(
+            x + Math.cos(angle) * s * 0.3,
+            y + Math.sin(angle) * s * 0.3,
+            x + Math.cos(angle) * s * 0.5,
+            y + Math.sin(angle) * s * 0.5
+          );
+        }
+        break;
+      case "performance":
+        // Lightning bolt / speed icon
+        this.doc.line(x + s * 0.2, y - s * 0.5, x - s * 0.1, y);
+        this.doc.line(x - s * 0.1, y, x + s * 0.1, y);
+        this.doc.line(x + s * 0.1, y, x - s * 0.2, y + s * 0.5);
+        break;
+      case "authority & trust":
+      case "links":
+        // Shield icon
+        this.doc.setLineWidth(0.6);
+        // Draw shield shape
+        this.doc.line(x, y - s * 0.5, x - s * 0.4, y - s * 0.3);
+        this.doc.line(x - s * 0.4, y - s * 0.3, x - s * 0.4, y + s * 0.1);
+        this.doc.line(x - s * 0.4, y + s * 0.1, x, y + s * 0.5);
+        this.doc.line(x, y + s * 0.5, x + s * 0.4, y + s * 0.1);
+        this.doc.line(x + s * 0.4, y + s * 0.1, x + s * 0.4, y - s * 0.3);
+        this.doc.line(x + s * 0.4, y - s * 0.3, x, y - s * 0.5);
+        break;
+      default:
+        // Star icon
+        this.doc.circle(x, y, s * 0.4, "S");
+    }
+  }
+
   // Draw category scorecard
   private drawScorecard(x: number, y: number, width: number, name: string, score: number, icon?: string) {
     // Cap score at 100
@@ -469,23 +619,51 @@ class PDFReportV2 {
     // Card background
     this.doc.setFillColor(...COLORS.white);
     this.doc.setDrawColor(...COLORS.border);
-    this.doc.roundedRect(x, y, width, 50, 3, 3, "FD");
+    this.doc.roundedRect(x, y, width, 55, 3, 3, "FD");
+    
+    // Category icon at top
+    this.drawCategoryIcon(x + width / 2, y + 10, name, COLORS.primary);
     
     // Score circle
     this.doc.setFillColor(br, bg, bb);
-    this.doc.circle(x + width / 2, y + 20, 14, "F");
+    this.doc.circle(x + width / 2, y + 28, 12, "F");
     
-    this.doc.setFontSize(14);
+    this.doc.setFontSize(12);
     this.doc.setTextColor(r, g, b);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text(String(cappedScore), x + width / 2, y + 24, { align: "center" });
+    this.doc.text(String(cappedScore), x + width / 2, y + 32, { align: "center" });
     
     // Category name
-    this.doc.setFontSize(8);
+    this.doc.setFontSize(7);
     this.doc.setTextColor(...COLORS.textSecondary);
     this.doc.setFont("helvetica", "normal");
-    const lines = this.doc.splitTextToSize(name, width - 8);
-    this.doc.text(lines, x + width / 2, y + 40, { align: "center" });
+    const lines = this.doc.splitTextToSize(name, width - 6);
+    this.doc.text(lines, x + width / 2, y + 48, { align: "center" });
+  }
+
+  // Draw priority icon (arrow or warning)
+  private drawPriorityIcon(x: number, y: number, priority: string) {
+    const [r, g, b] = getPriorityColor(priority);
+    this.doc.setFillColor(r, g, b);
+    this.doc.setDrawColor(r, g, b);
+    this.doc.setLineWidth(0.8);
+    
+    const s = 3; // icon size
+    const pLower = priority.toLowerCase();
+    
+    if (pLower === "critical" || pLower === "high") {
+      // Upward arrow (urgent)
+      this.doc.triangle(x, y - s, x - s * 0.6, y + s * 0.3, x + s * 0.6, y + s * 0.3, "F");
+      this.doc.rect(x - s * 0.2, y + s * 0.3, s * 0.4, s * 0.5, "F");
+    } else if (pLower === "medium") {
+      // Right arrow (moderate)
+      this.doc.triangle(x + s * 0.5, y, x - s * 0.2, y - s * 0.5, x - s * 0.2, y + s * 0.5, "F");
+      this.doc.rect(x - s * 0.7, y - s * 0.15, s * 0.5, s * 0.3, "F");
+    } else {
+      // Down arrow (low priority)
+      this.doc.triangle(x, y + s * 0.3, x - s * 0.5, y - s * 0.4, x + s * 0.5, y - s * 0.4, "F");
+      this.doc.rect(x - s * 0.15, y - s * 0.7, s * 0.3, s * 0.4, "F");
+    }
   }
 
   // Draw recommendation card
@@ -505,22 +683,25 @@ class PDFReportV2 {
     this.doc.setFillColor(pr, pg, pb);
     this.doc.rect(MARGIN, this.yPos, 3, cardHeight, "F");
     
+    // Priority icon
+    this.drawPriorityIcon(MARGIN + 14, this.yPos + 10, rec.priority);
+    
     // Priority pill
     this.doc.setFillColor(pbr, pbg, pbb);
-    this.doc.roundedRect(MARGIN + 8, this.yPos + 5, 35, 10, 2, 2, "F");
+    this.doc.roundedRect(MARGIN + 22, this.yPos + 5, 30, 10, 2, 2, "F");
     this.doc.setFontSize(6);
     this.doc.setTextColor(pr, pg, pb);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text(getPriorityLabel(rec.priority), MARGIN + 25.5, this.yPos + 11.5, { align: "center" });
+    this.doc.text(getPriorityLabel(rec.priority), MARGIN + 37, this.yPos + 11.5, { align: "center" });
     
     // Category badge
     this.doc.setFillColor(...COLORS.borderLight);
-    this.doc.roundedRect(MARGIN + 46, this.yPos + 5, 35, 10, 2, 2, "F");
+    this.doc.roundedRect(MARGIN + 55, this.yPos + 5, 35, 10, 2, 2, "F");
     this.doc.setFontSize(6);
     this.doc.setTextColor(...COLORS.textSecondary);
     this.doc.setFont("helvetica", "normal");
     const catText = rec.category.length > 10 ? rec.category.substring(0, 10) + "..." : rec.category;
-    this.doc.text(catText.toUpperCase(), MARGIN + 63.5, this.yPos + 11.5, { align: "center" });
+    this.doc.text(catText.toUpperCase(), MARGIN + 72.5, this.yPos + 11.5, { align: "center" });
     
     // Title - strip emojis to prevent rendering issues
     this.doc.setFontSize(11);
@@ -608,117 +789,258 @@ class PDFReportV2 {
   }
 
   // ============================================================================
-  // COVER PAGE
+  // COVER PAGE - Style-aware with agency branding
   // ============================================================================
   private drawCoverPage() {
-    // Clean white background (no dark fills)
     this.doc.setFillColor(...COLORS.white);
     this.doc.rect(0, 0, this.pageWidth, this.pageHeight, "F");
-    
-    // Subtle accent line at top
-    this.doc.setFillColor(...COLORS.primary);
-    this.doc.rect(0, 0, this.pageWidth, 4, "F");
-    
-    // Hero Section - Center Aligned (adjusted spacing to prevent cropping)
-    let y = 35;
-    
-    // Main Title
-    this.doc.setFontSize(28);
-    this.doc.setTextColor(...COLORS.textPrimary);
+
+    if (this.style === "modern") this.drawCoverModern();
+    else if (this.style === "executive") this.drawCoverExecutive();
+    else this.drawCoverMinimal();
+  }
+
+  // --- MODERN cover: bold gradient header band, large score ring ---
+  private drawCoverModern() {
+    // Top gradient band
+    this.doc.setFillColor(...this.brandPrimary);
+    this.doc.rect(0, 0, this.pageWidth, 80, "F");
+    // Accent overlay strip
+    this.doc.setFillColor(...this.brandAccent);
+    this.doc.rect(0, 72, this.pageWidth, 8, "F");
+
+    // Agency / brand name
+    this.doc.setFontSize(10);
+    this.doc.setTextColor(255, 255, 255);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text("SEO Health Report", this.pageWidth / 2, y, { align: "center" });
-    
-    y += 12;
-    
-    // Subtitle
-    this.doc.setFontSize(12);
-    this.doc.setTextColor(...COLORS.textSecondary);
+    this.doc.text(this.brandName.toUpperCase(), MARGIN, 20);
+
+    if (this.branding.tagline) {
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.text(this.branding.tagline, MARGIN, 28);
+    }
+
+    // Title
+    this.doc.setFontSize(26);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text("SEO Health Report", MARGIN, 52);
+
+    this.doc.setFontSize(11);
     this.doc.setFont("helvetica", "normal");
-    this.doc.text("Comprehensive Website Analysis", this.pageWidth / 2, y, { align: "center" });
-    
-    y += 18;
-    
-    // Website label
-    this.doc.setFontSize(9);
-    this.doc.setTextColor(...COLORS.textMuted);
-    this.doc.text("Website", this.pageWidth / 2, y, { align: "center" });
-    
-    y += 8;
-    
-    // Domain box with border
+    this.doc.text("Comprehensive Website Analysis", MARGIN, 64);
+
+    // Domain pill
+    let y = 100;
     this.doc.setFillColor(...COLORS.borderLight);
-    this.doc.setDrawColor(...COLORS.border);
-    this.doc.roundedRect(40, y, this.pageWidth - 80, 18, 4, 4, "FD");
-    
-    this.doc.setFontSize(11);
-    this.doc.setTextColor(...COLORS.primary);
+    this.doc.setDrawColor(...this.brandPrimary);
+    this.doc.setLineWidth(0.8);
+    this.doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 20, 5, 5, "FD");
+    this.doc.setFontSize(12);
+    this.doc.setTextColor(...this.brandPrimary);
     this.doc.setFont("helvetica", "bold");
-    // Sanitize domain for display
-    const displayDomain = stripEmojis(this.domain);
-    this.doc.text(displayDomain, this.pageWidth / 2, y + 12, { align: "center" });
-    
-    y += 30;
-    
-    // Grade Stamp (elegant circle design)
-    this.drawGradeStamp(this.pageWidth / 2, y + 20, this.grade, this.overallScore);
-    
-    y += 55;
-    
-    // Health Gauge (semi-circle speedometer) - slightly smaller
-    this.drawHealthGauge(this.pageWidth / 2, y + 25, 35, this.overallScore);
-    
-    y += 60;
-    
+    this.doc.text(stripEmojis(this.domain), this.pageWidth / 2, y + 13, { align: "center" });
+
+    y += 35;
+
+    // Large score ring
+    this.drawHealthGauge(this.pageWidth / 2, y + 30, 40, this.overallScore);
+    y += 70;
+
+    // Grade stamp
+    this.drawGradeStamp(this.pageWidth / 2, y + 5, this.grade, this.overallScore);
+    y += 40;
+
     // Score label
-    this.doc.setFontSize(11);
+    this.doc.setFontSize(13);
     this.doc.setTextColor(...getScoreColor(this.overallScore));
     this.doc.setFont("helvetica", "bold");
     this.doc.text(getScoreLabel(this.overallScore), this.pageWidth / 2, y, { align: "center" });
-    
     y += 20;
-    
-    // Metadata Grid (3 columns with vertical dividers)
-    const metaY = y;
-    const colWidth = (this.pageWidth - 80) / 3;
-    const startX = 40;
-    
-    // Background for metadata
-    this.doc.setFillColor(...COLORS.borderLight);
-    this.doc.roundedRect(startX, metaY, this.pageWidth - 80, 35, 4, 4, "F");
-    
-    // Metadata items - no emojis (jsPDF can't render them)
-    const metaItems = [
-      { label: "Date", value: this.createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
-      { label: "Pages Crawled", value: this.auditData.pagesScanned ? String(this.auditData.pagesScanned) : "N/A" },
-      { label: "Crawl Type", value: this.auditData.crawlType || "Quick Scan" },
+
+    // Metadata grid
+    this.drawMetadataGrid(y);
+
+    // Footer
+    this.drawCoverFooter();
+  }
+
+  // --- EXECUTIVE cover: clean, serif-feel, professional ---
+  private drawCoverExecutive() {
+    // Thin top line
+    this.doc.setFillColor(...this.brandPrimary);
+    this.doc.rect(0, 0, this.pageWidth, 3, "F");
+
+    // Left accent bar
+    this.doc.setFillColor(...this.brandPrimary);
+    this.doc.rect(MARGIN, 40, 4, 50, "F");
+
+    let y = 50;
+    this.doc.setFontSize(11);
+    this.doc.setTextColor(...this.brandPrimary);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(this.brandName.toUpperCase(), MARGIN + 12, y);
+
+    if (this.branding.tagline) {
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(...COLORS.textSecondary);
+      this.doc.text(this.branding.tagline, MARGIN + 12, y + 8);
+    }
+
+    y += 20;
+    this.doc.setFontSize(28);
+    this.doc.setTextColor(...COLORS.textPrimary);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text("SEO Audit Report", MARGIN + 12, y);
+
+    y += 12;
+    this.doc.setFontSize(12);
+    this.doc.setTextColor(...COLORS.textSecondary);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text(stripEmojis(this.domain), MARGIN + 12, y);
+
+    // Horizontal rule
+    y += 12;
+    this.doc.setDrawColor(...COLORS.border);
+    this.doc.setLineWidth(0.5);
+    this.doc.line(MARGIN, y, this.pageWidth - MARGIN, y);
+
+    // Score section - centered
+    y += 25;
+    this.drawGradeStamp(this.pageWidth / 2, y + 20, this.grade, this.overallScore);
+    y += 55;
+    this.drawHealthGauge(this.pageWidth / 2, y + 20, 35, this.overallScore);
+    y += 55;
+
+    this.doc.setFontSize(12);
+    this.doc.setTextColor(...getScoreColor(this.overallScore));
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(getScoreLabel(this.overallScore), this.pageWidth / 2, y, { align: "center" });
+    y += 20;
+
+    this.drawMetadataGrid(y);
+    this.drawCoverFooter();
+  }
+
+  // --- MINIMAL cover: lots of whitespace, typography-first ---
+  private drawCoverMinimal() {
+    let y = 60;
+
+    // Brand
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(...this.brandPrimary);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(this.brandName, MARGIN, y);
+
+    y += 30;
+    this.doc.setFontSize(32);
+    this.doc.setTextColor(...COLORS.textPrimary);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text("SEO Health", MARGIN, y);
+    y += 14;
+    this.doc.text("Report", MARGIN, y);
+
+    y += 20;
+    this.doc.setFontSize(14);
+    this.doc.setTextColor(...COLORS.textSecondary);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text(stripEmojis(this.domain), MARGIN, y);
+
+    y += 10;
+    this.doc.setFontSize(10);
+    this.doc.setTextColor(...COLORS.textMuted);
+    this.doc.text(this.createdDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), MARGIN, y);
+
+    // Score on the right side
+    const scoreX = this.pageWidth - MARGIN - 30;
+    this.drawGradeStamp(scoreX, 90, this.grade, this.overallScore);
+
+    this.doc.setFontSize(36);
+    this.doc.setTextColor(...getScoreColor(this.overallScore));
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(String(this.overallScore), scoreX, 140, { align: "center" });
+
+    this.doc.setFontSize(10);
+    this.doc.setTextColor(...COLORS.textMuted);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text("/ 100", scoreX + 18, 140);
+
+    // Divider
+    y += 25;
+    this.doc.setDrawColor(...COLORS.border);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(MARGIN, y, this.pageWidth - MARGIN, y);
+
+    y += 20;
+
+    // Stats in a single row
+    const passedCount = this.auditData.passedChecks ?? Math.round(this.overallScore / 10);
+    const warningCount = this.auditData.warningChecks ?? Math.round((100 - this.overallScore) / 25);
+    const failedCount = this.auditData.failedChecks ?? Math.round((100 - this.overallScore) / 15);
+
+    const stats = [
+      { label: "Passed", value: String(passedCount), color: COLORS.success },
+      { label: "Warnings", value: String(warningCount), color: COLORS.warning },
+      { label: "Issues", value: String(failedCount), color: COLORS.error },
+      { label: "Pages", value: this.auditData.pagesScanned ? String(this.auditData.pagesScanned) : "1" , color: COLORS.info },
     ];
-    
-    metaItems.forEach((item, i) => {
-      const x = startX + colWidth * i + colWidth / 2;
-      
-      // Vertical divider (except first)
-      if (i > 0) {
-        this.doc.setDrawColor(...COLORS.border);
-        this.doc.setLineWidth(0.3);
-        this.doc.line(startX + colWidth * i, metaY + 5, startX + colWidth * i, metaY + 30);
-      }
-      
+
+    const colW = CONTENT_WIDTH / stats.length;
+    stats.forEach((s, i) => {
+      const cx = MARGIN + colW * i + colW / 2;
+      this.doc.setFontSize(22);
+      this.doc.setTextColor(...s.color);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.text(s.value, cx, y, { align: "center" });
       this.doc.setFontSize(8);
       this.doc.setTextColor(...COLORS.textMuted);
       this.doc.setFont("helvetica", "normal");
-      this.doc.text(item.label, x, metaY + 12, { align: "center" });
-      
+      this.doc.text(s.label, cx, y + 8, { align: "center" });
+    });
+
+    this.drawCoverFooter();
+  }
+
+  // Shared helpers
+  private drawMetadataGrid(y: number) {
+    const colWidth = (this.pageWidth - 80) / 3;
+    const startX = 40;
+    this.doc.setFillColor(...COLORS.borderLight);
+    this.doc.roundedRect(startX, y, this.pageWidth - 80, 35, 4, 4, "F");
+
+    const metaItems = [
+      { label: "Date", value: this.createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+      { label: "Pages Analyzed", value: this.auditData.pagesScanned ? String(this.auditData.pagesScanned) : "1" },
+      { label: "Crawl Type", value: this.auditData.crawlType || "Quick Audit" },
+    ];
+
+    metaItems.forEach((item, i) => {
+      const x = startX + colWidth * i + colWidth / 2;
+      if (i > 0) {
+        this.doc.setDrawColor(...COLORS.border);
+        this.doc.setLineWidth(0.3);
+        this.doc.line(startX + colWidth * i, y + 5, startX + colWidth * i, y + 30);
+      }
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(...COLORS.textMuted);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.text(item.label, x, y + 12, { align: "center" });
       this.doc.setFontSize(11);
       this.doc.setTextColor(...COLORS.textPrimary);
       this.doc.setFont("helvetica", "bold");
-      this.doc.text(item.value, x, metaY + 25, { align: "center" });
+      this.doc.text(item.value, x, y + 25, { align: "center" });
     });
-    
-    // Footer branding
+  }
+
+  private drawCoverFooter() {
     this.doc.setFontSize(8);
     this.doc.setTextColor(...COLORS.textMuted);
     this.doc.setFont("helvetica", "normal");
-    this.doc.text("Powered by SEO Audit Tool", this.pageWidth / 2, this.pageHeight - 15, { align: "center" });
+    const footerLine = this.branding.companyName
+      ? `Powered by ${this.branding.companyName}${this.branding.website ? ' | ' + this.branding.website : ''}`
+      : "Powered by SEO Audit Tool";
+    this.doc.text(footerLine, this.pageWidth / 2, this.pageHeight - 15, { align: "center" });
   }
 
   // ============================================================================
@@ -792,13 +1114,13 @@ class PDFReportV2 {
     this.doc.setFillColor(...COLORS.infoLight);
     this.doc.roundedRect(MARGIN, this.yPos, CONTENT_WIDTH, 30, 4, 4, "F");
     
-    // Info icon
+    // Info icon with graphic "i"
     this.doc.setFillColor(...COLORS.info);
     this.doc.circle(MARGIN + 12, this.yPos + 15, 6, "F");
-    this.doc.setTextColor(...COLORS.white);
-    this.doc.setFontSize(10);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.text("i", MARGIN + 12, this.yPos + 18, { align: "center" });
+    // Draw "i" icon
+    this.doc.setFillColor(...COLORS.white);
+    this.doc.circle(MARGIN + 12, this.yPos + 12.5, 1, "F"); // dot
+    this.doc.rect(MARGIN + 11, this.yPos + 14, 2, 5, "F"); // stem
     
     // Insight text
     const insightText = this.overallScore >= 80 
@@ -869,8 +1191,8 @@ class PDFReportV2 {
       const col = i % 3;
       
       if (col === 0 && i > 0) {
-        this.yPos += 55;
-        this.checkPageBreak(55);
+        this.yPos += 60;
+        this.checkPageBreak(60);
       }
       
       const x = MARGIN + col * (cardWidth + cardGap);
@@ -879,7 +1201,7 @@ class PDFReportV2 {
       this.drawScorecard(x, y, cardWidth, cat.name, cat.score);
     });
     
-    this.yPos += 60;
+    this.yPos += 65;
   }
 
   // ============================================================================
@@ -965,7 +1287,7 @@ class PDFReportV2 {
   }
 
   // ============================================================================
-  // CALL TO ACTION PAGE
+  // CALL TO ACTION PAGE - Agency branded
   // ============================================================================
   private drawCallToAction() {
     this.doc.addPage();
@@ -981,8 +1303,8 @@ class PDFReportV2 {
     
     this.yPos += 25;
     
-    // CTA Box
-    this.doc.setFillColor(...COLORS.primaryLight);
+    // CTA Box - uses brand colors
+    this.doc.setFillColor(...this.brandPrimary);
     this.doc.roundedRect(30, this.yPos, this.pageWidth - 60, 80, 6, 6, "F");
     
     this.yPos += 20;
@@ -990,30 +1312,37 @@ class PDFReportV2 {
     this.doc.setFontSize(14);
     this.doc.setTextColor(...COLORS.white);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text("Need Help Fixing These Issues?", this.pageWidth / 2, this.yPos, { align: "center" });
+    const ctaHeading = this.branding.companyName 
+      ? `Let ${this.branding.companyName} Help You Rank Higher`
+      : "Need Help Fixing These Issues?";
+    this.doc.text(ctaHeading, this.pageWidth / 2, this.yPos, { align: "center" });
     
     this.yPos += 15;
     
     this.doc.setFontSize(10);
     this.doc.setFont("helvetica", "normal");
-    const ctaText = "Our team of SEO experts can help you implement these recommendations and improve your search rankings.";
+    const ctaText = this.branding.companyName
+      ? `Our SEO experts at ${this.branding.companyName} can implement these recommendations and boost your search visibility.`
+      : "Our team of SEO experts can help you implement these recommendations and improve your search rankings.";
     const ctaLines = this.doc.splitTextToSize(ctaText, this.pageWidth - 80);
     this.doc.text(ctaLines, this.pageWidth / 2, this.yPos, { align: "center" });
     
     this.yPos += 30;
     
-    // Contact info
+    // Contact info box
     this.doc.setFillColor(...COLORS.white);
-    this.doc.roundedRect(this.pageWidth / 2 - 60, this.yPos - 5, 120, 25, 4, 4, "F");
+    const contactBoxW = 140;
+    this.doc.roundedRect(this.pageWidth / 2 - contactBoxW / 2, this.yPos - 5, contactBoxW, 25, 4, 4, "F");
     
     this.doc.setFontSize(11);
-    this.doc.setTextColor(...COLORS.primary);
+    this.doc.setTextColor(...this.brandPrimary);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text("Upgrade to Pro for Automatic Fixes", this.pageWidth / 2, this.yPos + 10, { align: "center" });
+    const contactLabel = this.branding.email || this.branding.website || this.branding.phone || "Get Started Today";
+    this.doc.text(contactLabel, this.pageWidth / 2, this.yPos + 10, { align: "center" });
     
     this.yPos += 50;
     
-    // Summary stats
+    // Summary stats box
     this.doc.setFillColor(...COLORS.borderLight);
     this.doc.roundedRect(30, this.yPos, this.pageWidth - 60, 50, 4, 4, "F");
     
@@ -1090,7 +1419,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the new PDFReportV2 class for clean, print-first design
-    const report = new PDFReportV2(auditData);
+    const report = new PDFReportV3(auditData);
     const pdfBuffer = report.generate();
 
     return new NextResponse(pdfBuffer, {

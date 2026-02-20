@@ -412,23 +412,15 @@ function formatContentAsHTML(
   
   // Add YouTube video embed at the end if available
   if (youtubeVideo) {
+    // Use compact iframe format to prevent WordPress from inserting <br> tags
+    const safeTitle = youtubeVideo.title.replace(/['"<>]/g, '');
     html += `
 
 <!-- Related Video -->
 <div class="related-video-section">
-  <h3>Related Video</h3>
-  <div class="video-embed-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;">
-    <iframe 
-      src="${youtubeVideo.embedUrl}?rel=0" 
-      title="${youtubeVideo.title.replace(/['"]/g, '')}"
-      frameborder="0" 
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-      allowfullscreen
-      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-      loading="lazy">
-    </iframe>
-  </div>
-  <p class="video-caption"><em>Watch: ${youtubeVideo.title}</em></p>
+<h3>Related Video</h3>
+<div class="video-embed-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;"><iframe src="${youtubeVideo.embedUrl}?rel=0" title="${safeTitle}" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;" loading="lazy"></iframe></div>
+<p class="video-caption"><em>Watch: ${youtubeVideo.title}</em></p>
 </div>
 `;
   }
@@ -444,19 +436,8 @@ function formatContentAsHTML(
 `;
   }
   
-  // Add placeholder for WordPress uploaded image at the end
-  // The WordPress plugin will replace {{WORDPRESS_IMAGE_URL}} with the actual uploaded image URL
-  const altText = title.replace(/['"]/g, '');
-  html += `
-
-<!-- WordPress Featured Image (will be replaced by plugin with permanent URL) -->
-<div class="wordpress-featured-image" style="margin-top: 2rem; text-align: center;">
-  <figure style="margin: 0;">
-    <img src="{{WORDPRESS_IMAGE_URL}}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 8px;" />
-    <figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;"><em>Featured: ${altText}</em></figcaption>
-  </figure>
-</div>
-`;
+  // Note: Featured image is already at the top of the content
+  // The WordPress plugin will replace the temp URL with the permanent WordPress URL
   
   html += `\n</article>`;
   

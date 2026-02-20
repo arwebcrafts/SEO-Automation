@@ -736,9 +736,17 @@ export default function AutoPilotEngine() {
           if (imageStatus.setAsFeatured && imageStatus.featuredMediaId > 0) {
             message += `\n🖼️ Featured image set successfully! (ID: ${imageStatus.featuredMediaId})`;
           } else if (imageStatus.sent) {
-            message += `\n⚠️ Image sent but not set as featured`;
-            // Log detailed error info
-            console.warn("[WordPress Publish] Image not set. Details:", imageStatus);
+            // Check if image was actually added to content (pre-upload mechanism)
+            // The image may be successfully embedded in content even if not set as WordPress featured image
+            const pluginStatus = imageStatus.pluginStatus || {};
+            if (pluginStatus.uploaded || pluginStatus.addedToContent || pluginStatus.wordpressUrl) {
+              message += `\n🖼️ Image embedded in content successfully!`;
+              console.log("[WordPress Publish] Image embedded via pre-upload. Details:", imageStatus);
+            } else {
+              // Only show warning if image truly wasn't handled
+              message += `\n⚠️ Image sent but may not be displayed`;
+              console.warn("[WordPress Publish] Image status unclear. Details:", imageStatus);
+            }
           }
         }
         
