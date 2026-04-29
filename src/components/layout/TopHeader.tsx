@@ -117,7 +117,7 @@ export function TopHeader() {
       <header className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Globe className="w-6 h-6 text-blue-600" />
-          <span className="font-bold text-lg">SEO Hub</span>
+          <span className="font-bold text-lg">SeoRise</span>
         </div>
         <div className="flex items-center gap-3">
           <Link

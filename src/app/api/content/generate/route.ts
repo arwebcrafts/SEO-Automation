@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { z } from "zod";
-
-// Lazy initialization to avoid build-time errors
-let openai: OpenAI | null = null;
+import { getCurrentUser } from "@/lib/auth";
+import {
+  consumePlatformAiCall,
+  AiGateDeniedError,
+  getOpenAiClientForUser,
+} from "@/lib/ai-gatekeeper";
+// Per-request client (BYOK / platform) set at start of POST
+let requestOpenAi: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
-  if (!openai) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+  if (requestOpenAi) {
+    return requestOpenAi;
   }
-  return openai;
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY not configured");
+  }
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
 // ==================== OUTPUT SCHEMAS ====================
@@ -429,17 +435,19 @@ export async function POST(request: NextRequest) {
   console.log("[Content Generate] Starting request");
   
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    console.log("[Content Generate] OPENAI_API_KEY exists:", !!apiKey);
-    console.log("[Content Generate] OPENAI_API_KEY length:", apiKey?.length);
-    
-    if (!apiKey) {
-      console.log("[Content Generate] ERROR: OPENAI_API_KEY not configured");
-      return NextResponse.json(
-        { error: "OpenAI API Key is not configured. Please add OPENAI_API_KEY to your environment variables in Vercel Dashboard." },
-        { status: 400 }
-      );
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    try {
+      await consumePlatformAiCall(user);
+    } catch (gateErr) {
+      if (gateErr instanceof AiGateDeniedError) {
+        return NextResponse.json({ error: gateErr.message }, { status: 402 });
+      }
+      throw gateErr;
+    }
+    requestOpenAi = getOpenAiClientForUser(user);
 
     console.log("[Content Generate] parsing request body");
     
@@ -575,5 +583,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  } finally {
+    requestOpenAi = null;
   }
 }

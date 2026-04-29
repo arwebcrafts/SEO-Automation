@@ -6,10 +6,15 @@ import { useEffect } from "react";
 
 const PUBLIC_PATHS = [
   "/",
+  "/scan",
   "/sign-in",
   "/sign-up",
   "/sso-callback",
   "/onboarding",
+  "/about",
+  "/contact",
+  "/services",
+  "/pricing",
 ];
 
 function isPublicPath(pathname: string) {

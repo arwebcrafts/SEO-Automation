@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       const normalizedUrl = normalizeUrl(siteUrl);
       const category = new URL(request.url).searchParams.get("category") || "";
       const response = await fetch(
-        `${normalizedUrl}/wp-json/seo-autofix/v1/verify${category ? `?category=${category}` : ""}`,
+        `${normalizedUrl}/wp-json/seo-autofix/v1/verify-status${category ? `?category=${category}` : ""}`,
         {
           headers: {
             "X-SEO-AutoFix-Key": apiKey,
@@ -320,12 +320,22 @@ export async function POST(request: NextRequest) {
     };
 
     if (method === "POST" && options) {
-      // Wrap options in 'options' key for WordPress REST API
-      fetchOptions.body = JSON.stringify({ options });
+      fetchOptions.body = JSON.stringify(options);
     }
 
     const normalizedSiteUrl = normalizeUrl(site_url);
-    const response = await fetch(`${normalizedSiteUrl}${endpoint}`, fetchOptions);
+    const queryString =
+      method === "GET" && options
+        ? `?${new URLSearchParams(
+            Object.entries(options).reduce<Record<string, string>>((params, [key, value]) => {
+              if (value !== undefined && value !== null) {
+                params[key] = String(value);
+              }
+              return params;
+            }, {})
+          ).toString()}`
+        : "";
+    const response = await fetch(`${normalizedSiteUrl}${endpoint}${queryString}`, fetchOptions);
 
     if (!response.ok) {
       const errorText = await response.text();

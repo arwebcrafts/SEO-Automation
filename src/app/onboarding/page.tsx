@@ -6,39 +6,37 @@ import { useUser } from "@clerk/nextjs";
 import {
   User,
   Building2,
-  Users,
   CheckCircle2,
   ArrowRight,
   Loader2,
-  Globe,
-  BarChart3,
-  Zap,
+  Sparkles,
+  ChevronLeft,
 } from "lucide-react";
+import Link from "next/link";
 
 type AccountType = "INDIVIDUAL" | "AGENCY";
 
 export default function OnboardingPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState<AccountType | null>(null);
   const [agencyName, setAgencyName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleContinue = async () => {
+  const handleFinish = async () => {
     if (!selectedType) {
-      setError("Please select an account type");
+      setError("Pick one option above.");
       return;
     }
-
-    if (selectedType === "AGENCY" && !agencyName.trim()) {
-      setError("Please enter your agency name");
+    if (selectedType === "AGENCY" && agencyName.trim().length < 2) {
+      setError("Type your company or agency name (at least 2 letters).");
       return;
     }
 
     setIsSubmitting(true);
     setError("");
-
     try {
       const response = await fetch("/api/onboarding", {
         method: "POST",
@@ -48,13 +46,10 @@ export default function OnboardingPage() {
           agencyName: selectedType === "AGENCY" ? agencyName.trim() : undefined,
         }),
       });
-
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to complete onboarding");
+        throw new Error(data.error || "Something went wrong. Try again.");
       }
-
-      // Redirect based on account type
       if (selectedType === "AGENCY") {
         router.push("/agency");
       } else {
@@ -68,200 +63,170 @@ export default function OnboardingPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-900 dark:via-blue-950/20 dark:to-indigo-950/30">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 rounded-full mb-6 shadow-lg">
-            <Globe className="w-5 h-5 text-blue-600" />
-            <span className="font-semibold text-slate-900 dark:text-slate-100">SEO Hub</span>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-10 dark:from-slate-950 dark:to-slate-900">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+            <span className={step >= 1 ? "text-indigo-600" : ""}>1. Learn</span>
+            <span>→</span>
+            <span className={step >= 2 ? "text-indigo-600" : ""}>2. Your setup</span>
           </div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-            Welcome, {user?.firstName || "there"}! 👋
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400">
-            Let&apos;s set up your account. How will you be using SEO Hub?
-          </p>
+          <Link href="/" className="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+            Home
+          </Link>
         </div>
 
-        {/* Account Type Selection */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Individual Account */}
-          <button
-            onClick={() => setSelectedType("INDIVIDUAL")}
-            className={`relative p-8 rounded-2xl border-2 text-left transition-all ${
-              selectedType === "INDIVIDUAL"
-                ? "border-blue-600 bg-blue-50/50 dark:bg-blue-900/20 shadow-lg shadow-blue-500/10"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700"
-            }`}
-          >
-            {selectedType === "INDIVIDUAL" && (
-              <div className="absolute top-4 right-4">
-                <CheckCircle2 className="w-6 h-6 text-blue-600" />
+        {step === 1 && (
+          <>
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg">
+                <Sparkles className="h-7 w-7" />
               </div>
-            )}
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-              <User className="w-7 h-7 text-white" />
+              <h1 className="mb-3 text-3xl font-bold text-slate-900 dark:text-white">
+                Hi {user?.firstName || "there"}—welcome to SeoRise
+              </h1>
+              <p className="text-lg text-slate-600 dark:text-slate-400">
+                We help you get <strong>more people finding you</strong> (on Google and in AI answers) and{" "}
+                <strong>more of them asking for a quote or a call</strong>. No jargon required.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-              Individual / Freelancer
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Perfect for solopreneurs, bloggers, and freelancers managing their own websites.
-            </p>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Unlimited SEO audits
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Content strategy tools
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                WordPress integration
-              </li>
-            </ul>
-          </button>
 
-          {/* Agency Account */}
-          <button
-            onClick={() => setSelectedType("AGENCY")}
-            className={`relative p-8 rounded-2xl border-2 text-left transition-all ${
-              selectedType === "AGENCY"
-                ? "border-purple-600 bg-purple-50/50 dark:bg-purple-900/20 shadow-lg shadow-purple-500/10"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300 dark:hover:border-purple-700"
-            }`}
-          >
+            <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+              <h2 className="mb-3 font-semibold text-slate-900 dark:text-white">You will be able to:</h2>
+              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  See what is slowing your website down—and fix many issues in one click on WordPress.
+                </li>
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  Plan and publish posts so your site always has something fresh to show visitors and search.
+                </li>
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  (Optional, on paid plans) Ask happy customers for reviews and add a small chat box that collects leads.
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 py-4 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Continue
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="mb-6 flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </button>
+
+            <h1 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Who is this account for?</h1>
+            <p className="mb-6 text-slate-600 dark:text-slate-400">
+              Choose one. You can change details later in settings.
+            </p>
+
+            <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setSelectedType("INDIVIDUAL")}
+                className={`rounded-2xl border-2 p-6 text-left transition-all ${
+                  selectedType === "INDIVIDUAL"
+                    ? "border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/40"
+                    : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900"
+                }`}
+              >
+                <User className="mb-3 h-8 w-8 text-indigo-600" />
+                <h3 className="mb-1 font-bold text-slate-900 dark:text-white">Just me or one business</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  I manage my own site (or one company I work for).
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedType("AGENCY")}
+                className={`rounded-2xl border-2 p-6 text-left transition-all ${
+                  selectedType === "AGENCY"
+                    ? "border-violet-600 bg-violet-50/80 dark:bg-violet-950/40"
+                    : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900"
+                }`}
+              >
+                <Building2 className="mb-3 h-8 w-8 text-violet-600" />
+                <h3 className="mb-1 font-bold text-slate-900 dark:text-white">A team or agency</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  We work with several clients or brands.
+                </p>
+              </button>
+            </div>
+
             {selectedType === "AGENCY" && (
-              <div className="absolute top-4 right-4">
-                <CheckCircle2 className="w-6 h-6 text-purple-600" />
+              <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  What should we call your team?
+                </label>
+                <input
+                  type="text"
+                  value={agencyName}
+                  onChange={(e) => setAgencyName(e.target.value)}
+                  placeholder="Example: Northside Digital"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
               </div>
             )}
-            <div className="absolute -top-3 -right-3 px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg">
-              PRO
-            </div>
-            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30">
-              <Building2 className="w-7 h-7 text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-              Agency / Team
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              For agencies and teams managing multiple clients and websites.
-            </p>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Multi-client dashboard
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Team member access
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                White-label reports
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Client management
-              </li>
-            </ul>
-          </button>
-        </div>
 
-        {/* Agency Name Input */}
-        {selectedType === "AGENCY" && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 mb-8">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              What&apos;s your agency name?
-            </label>
-            <input
-              type="text"
-              value={agencyName}
-              onChange={(e) => setAgencyName(e.target.value)}
-              placeholder="e.g., Digital Marketing Pro"
-              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-100"
-            />
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 text-red-700 dark:text-red-300">
-            {error}
-          </div>
-        )}
-
-        {/* Continue Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleContinue}
-            disabled={!selectedType || isSubmitting}
-            className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${
-              selectedType === "AGENCY"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-purple-500/25"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/25"
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Setting up...
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="w-5 h-5" />
-              </>
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                {error}
+              </div>
             )}
-          </button>
-        </div>
 
-        {/* Features Preview */}
-        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-700">
-          <h3 className="text-center text-lg font-semibold text-slate-900 dark:text-slate-100 mb-8">
-            What you&apos;ll get access to
-          </h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
-              </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">SEO Audits</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Comprehensive website analysis
-              </p>
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <strong>Next after this screen:</strong> you will go straight to your workspace. Add your website when
+              you are ready. Paid plans unlock more sites and automation—see{" "}
+              <Link href="/pricing" className="font-semibold underline">
+                Pricing
+              </Link>
+              .
             </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Zap className="w-6 h-6 text-green-600" />
-              </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">AI Content</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Generate optimized content
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Users className="w-6 h-6 text-purple-600" />
-              </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">Collaboration</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Work with your team
-              </p>
-            </div>
-          </div>
-        </div>
+
+            <button
+              type="button"
+              onClick={() => void handleFinish()}
+              disabled={!selectedType || isSubmitting}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-indigo-600 py-4 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  Go to my workspace
+                  <ArrowRight className="h-5 w-5" />
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

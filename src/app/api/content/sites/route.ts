@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { getPlanLimits, hasActiveSubscription } from "@/lib/plan-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,38 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+    const limits = getPlanLimits(user);
+    const existingCount = await prisma.wordPressSite.count({
+      where: { userId: user.id, isActive: true },
+    });
+
+    if (limits.maxSites <= 0 || existingCount >= limits.maxSites) {
+      const needsBilling =
+        user.plan === "FREE" || !hasActiveSubscription(user);
+      return NextResponse.json(
+        {
+          error: needsBilling
+            ? "Active subscription required to connect a site."
+            : "Site limit reached for your plan. Upgrade to add more sites.",
+          code: "PLAN_LIMIT",
+        },
+        { status: 402 }
+      );
+    }
+
+    if (user.plan === "WHITE_LABEL" && limits.requiresByok) {
+      if (!user.openaiApiKeyEncrypted) {
+        return NextResponse.json(
+          {
+            error:
+              "Add your OpenAI API key in settings to enable AI features on the white-label plan.",
+            code: "BYOK_REQUIRED",
+          },
+          { status: 402 }
+        );
+      }
+    }
+
     const body = await request.json();
     const {
       name,
@@ -67,7 +100,10 @@ export async function POST(request: NextRequest) {
         const verifyResponse = await fetch(
           `${normalizedUrl}/wp-json/seo-autofix/v1/verify`,
           {
-            headers: { "X-API-Key": apiKey },
+            headers: {
+              "X-SEO-AutoFix-Key": apiKey,
+              Authorization: `Bearer ${apiKey}`,
+            },
           }
         );
         connectionVerified = verifyResponse.ok;
@@ -113,6 +149,7 @@ export async function POST(request: NextRequest) {
 // PUT: Update WordPress site
 export async function PUT(request: NextRequest) {
   try {
+    const user = await requireAuth();
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -121,6 +158,13 @@ export async function PUT(request: NextRequest) {
         { error: "Site ID is required" },
         { status: 400 }
       );
+    }
+
+    const owned = await prisma.wordPressSite.findFirst({
+      where: { id, userId: user.id },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const site = await prisma.wordPressSite.update({
@@ -141,6 +185,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: Remove WordPress site
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -149,6 +194,13 @@ export async function DELETE(request: NextRequest) {
         { error: "Site ID is required" },
         { status: 400 }
       );
+    }
+
+    const owned = await prisma.wordPressSite.findFirst({
+      where: { id, userId: user.id },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     await prisma.wordPressSite.delete({

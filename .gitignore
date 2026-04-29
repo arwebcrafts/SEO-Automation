@@ -48,3 +48,9 @@ prisma/*.db-journal
 # seo-autofix-remotion/
 
 .vercel
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+# Cursor IDE
+.cursor/

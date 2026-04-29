@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-API-Key": apiKey,
+            "X-SEO-AutoFix-Key": apiKey,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
             title: post.title,

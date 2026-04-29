@@ -15,6 +15,13 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
 - Web Application: v1.0 (Deployed to Vercel)
 - Trigger.dev Integration: v20260116.1 (11 Tasks Active)
 
+**Updated Product Direction (April 2026):**
+- Start with a reliable WordPress plugin that makes SEO fixes work for real users before expanding the SaaS surface.
+- The long-term product becomes a WordPress-first SEO, GEO, and AEO automation platform.
+- Retell AI / AI calling receptionist is removed from the roadmap and should remain post-launch only because it adds telephony cost, operational complexity, compliance risk, and support burden.
+- Pricing is simplified to two commercial tracks: Business for simple/local businesses and Agency for teams managing multiple clients.
+- Every shipped feature must support the core promise: audit, explain, fix, verify, and report.
+
 ---
 
 ## Part 1: Current Implementation Status
@@ -503,59 +510,91 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
    - Competitor backlink analysis
    - Disavow file management
 
+### 3.4 GEO and AEO Expansion
+
+These features come after the WordPress plugin is stable and users can trust the core SEO automation.
+
+1. **GEO (Generative Engine Optimization)**
+   - `llms.txt` generation and validation
+   - AI crawler access checks for GPTBot, ClaudeBot, PerplexityBot, and Google-Extended
+   - Passage-level content recommendations for AI citations
+   - Brand/entity consistency checks across pages
+   - AI visibility reporting for business-critical queries
+
+2. **AEO (Answer Engine Optimization)**
+   - FAQ, HowTo, Service, LocalBusiness, Product, and Review schema workflows
+   - Answer-ready content blocks for service and location pages
+   - Featured-snippet style recommendations
+   - Internal answer hub generation for common customer questions
+   - Search intent mapping for informational, local, and transactional queries
+
+3. **Explicitly Excluded From Pre-Launch Scope**
+   - AI calling receptionist / Retell AI
+   - Phone call routing, call summaries, voice agents, or appointment handling by voice
+   - Any paid telephony workflow that increases launch cost or requires support operations
+
 ---
 
 ## Part 4: Implementation Blueprint
 
-### Phase 1: Critical Fixes (Week 1-2)
+### Phase 1: WordPress Plugin MVP Hardening (Week 1-2)
 
-#### Week 1: Plugin Fixes
+#### Week 1: Plugin Reliability
 - [ ] Title tag editing functionality
 - [ ] WebP conversion automation
 - [ ] Redirect management UI
 - [ ] Bulk fix progress tracking
 - [ ] Settings export/import
+- [ ] API permission and nonce review for every mutable endpoint
+- [ ] Fix history and rollback strategy for every auto-fix
 
-#### Week 2: Web App Fixes
-- [ ] Database setup & migration
-- [ ] User authentication system
-- [ ] Audit history & comparison
-- [ ] Content scheduler editor
-- [ ] Site connection validation
+#### Week 2: Real User Validation
+- [ ] Test plugin on clean WordPress install
+- [ ] Test plugin on Elementor, Gutenberg, and common SEO-plugin sites
+- [ ] Verify each fix before/after with screenshots or API responses
+- [ ] Package installable ZIP and onboarding flow
+- [ ] Write simple setup guide for non-technical business owners
 
-### Phase 2: Authentication & Multi-Tenancy (Week 3-4)
+### Phase 2: SaaS Connection and Accounts (Week 3-4)
 
-#### Week 3: User System
+#### Week 3: Business Account Flow
 - [ ] User registration/login
 - [ ] Role-based access control
 - [ ] User profile management
 - [ ] Password reset functionality
 - [ ] Email verification
+- [ ] Single-site business workspace
+- [ ] WordPress connection health checks
 
-#### Week 4: Multi-Tenancy
+#### Week 4: Agency Foundation
 - [ ] Agency account creation
 - [ ] Client management
 - [ ] Data isolation
 - [ ] Resource allocation
 - [ ] Billing integration
+- [ ] Agency member roles
+- [ ] Per-client WordPress connection status
 
-### Phase 3: Local SEO Features (Week 5-8)
+### Phase 3: SEO Automation Product (Week 5-8)
 
-#### Week 5-6: GBP Integration
+#### Week 5-6: Local SEO and Content
 - [ ] Google Business Profile API integration
 - [ ] Post scheduling
 - [ ] Review management
 - [ ] Q&A management
 - [ ] Photo management
+- [ ] Service/location page recommendations
 
-#### Week 7-8: Local Features
+#### Week 7-8: Technical SEO and Reporting
 - [ ] Local keyword research
 - [ ] Citation building
 - [ ] Local ranking tracker
 - [ ] Multi-location support
 - [ ] Service area pages
+- [ ] Technical issue verification after fixes
+- [ ] User-facing fix reports
 
-### Phase 4: Agency Features (Week 9-12)
+### Phase 4: Agency Workflow (Week 9-12)
 
 #### Week 9-10: Agency Dashboard
 - [ ] Agency overview
@@ -571,21 +610,25 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
 - [ ] Client portal
 - [ ] API access
 
-### Phase 5: Advanced SEO (Week 13-16)
+### Phase 5: GEO and AEO (Week 13-16)
 
-#### Week 13-14: AI Features
+#### Week 13-14: GEO Features
 - [ ] AI content optimization
 - [ ] Content scoring
 - [ ] Readability analysis
 - [ ] Keyword optimization
 - [ ] Competitor analysis
+- [ ] `llms.txt` generation and validation
+- [ ] AI crawler accessibility checks
 
-#### Week 15-16: Technical SEO
+#### Week 15-16: AEO Features
 - [ ] Core Web Vitals
 - [ ] Technical audit
 - [ ] Schema generator
 - [ ] Backlink analysis
 - [ ] Performance monitoring
+- [ ] Answer-ready content blocks
+- [ ] FAQ/HowTo/Service schema generation
 
 ---
 
@@ -785,6 +828,68 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
 
 ---
 
+## Part 8.5: Pricing Strategy
+
+Pricing should stay simple at launch: one plan for simple businesses and one plan for agencies. Free tools can remain as acquisition, but the paid product should not be split into many confusing tiers.
+
+### Business Plan
+
+For local businesses and simple websites that need SEO fixes without managing clients.
+
+**Target users:**
+- Local businesses
+- Service providers
+- Solo founders
+- Small WordPress site owners
+
+**Included:**
+- 1 connected WordPress site
+- SEO audit and auto-fix workflow
+- Technical SEO fixes
+- Image alt text and optimization
+- LocalBusiness schema and GBP basics
+- `llms.txt` and basic GEO checks when released
+- Monthly reports
+
+**Limits to define before launch:**
+- Monthly audits
+- AI content generations
+- Image optimizations
+- Support level
+
+### Agency Plan
+
+For agencies, consultants, and teams managing multiple client websites.
+
+**Target users:**
+- SEO agencies
+- Web design agencies
+- Freelance SEO consultants with multiple clients
+- White-label service providers
+
+**Included:**
+- Multiple connected WordPress sites
+- Client management
+- Team member access
+- White-label reports
+- Bulk audits and fixes
+- Client onboarding links
+- Agency-level reporting
+- Priority support
+
+**Limits to define before launch:**
+- Number of client sites
+- Team seats
+- Monthly audit volume
+- White-label domain availability
+- API access availability
+
+### Removed Pricing Complexity
+
+Do not launch with separate Pro, Growth, White Label, Enterprise, or AI Receptionist plans. Add complexity only after usage data proves a real need.
+
+---
+
 ## Part 9: Success Metrics
 
 ### 9.1 Technical Metrics
@@ -813,30 +918,29 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
 
 ### Critical (Do This Week)
 
-1. **Database Setup**
-   ```bash
-   # Set up PostgreSQL on Vercel
-   # Add DATABASE_URL to environment variables
-   # Run migration
-   npx prisma db push
-   ```
+1. **Plugin Reality Check**
+   - Install the current plugin ZIP on a clean WordPress site
+   - Verify activation, admin pages, and REST API endpoints
+   - Run every available auto-fix on test content
+   - Record what works, what fails, and what needs rollback
 
-2. **Plugin Fixes**
+2. **Plugin MVP Fixes**
    - Implement title tag editing
    - Add WebP conversion
    - Create redirect management UI
+   - Add before/after verification for fixes
 
-3. **Web App Fixes**
-   - Add user authentication
-   - Implement audit history
-   - Add content editor
+3. **Product Scope Cleanup**
+   - Remove AI calling receptionist / Retell AI from all near-term planning
+   - Keep only Business and Agency pricing tracks
+   - Keep SEO, GEO, and AEO as the product expansion path
 
 ### High Priority (Do This Month)
 
-4. **Trigger.dev Improvements**
-   - Add error handling
-   - Implement progress tracking
-   - Create task queue
+4. **SaaS Connection**
+   - Validate WordPress connection flow
+   - Store site connections per user/account
+   - Implement audit history for connected sites
 
 5. **Testing**
    - Write unit tests for critical paths
@@ -844,9 +948,10 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
    - Performance testing
 
 6. **Documentation**
-   - Write user guides
+   - Write Business user guide
+   - Write Agency onboarding guide
    - Create API documentation
-   - Record tutorial videos
+   - Document what the plugin can safely fix and undo
 
 ---
 
@@ -929,32 +1034,32 @@ This document provides a complete blueprint of the SEO AutoFix Pro project, incl
 
 ## Part 14: Next 30 Days Action Plan
 
-### Week 1: Critical Fixes
-- [ ] Day 1-2: Database setup and migration
-- [ ] Day 3-4: Plugin title tag editing
-- [ ] Day 5: Plugin WebP conversion
-- [ ] Day 6-7: Plugin redirect management UI
-- [ ] Day 8: Testing and bug fixes
+### Week 1: WordPress Plugin Reality Check
+- [ ] Day 1: Install plugin on a clean WordPress site
+- [ ] Day 2: Verify activation, settings, API key, and REST endpoints
+- [ ] Day 3: Test all existing fix actions on sample content
+- [ ] Day 4: Document pass/fail results and missing rollback coverage
+- [ ] Day 5-7: Fix highest-risk plugin failures first
 
-### Week 2: Web App Improvements
-- [ ] Day 1-2: User authentication system
-- [ ] Day 3-4: Audit history & comparison
-- [ ] Day 5: Content scheduler editor
-- [ ] Day 6: Site connection validation
-- [ ] Day 7: Testing and bug fixes
+### Week 2: Plugin MVP Completion
+- [ ] Day 1-2: Plugin title tag editing
+- [ ] Day 3: WebP conversion validation
+- [ ] Day 4-5: Redirect management UI
+- [ ] Day 6: Bulk fix progress and user feedback
+- [ ] Day 7: Package ZIP and verify install/update flow
 
-### Week 3: Trigger.dev Enhancements
-- [ ] Day 1-2: Error handling improvements
-- [ ] Day 3-4: Progress tracking
-- [ ] Day 5: Task queue management
-- [ ] Day 6-7: Testing and documentation
+### Week 3: Business and Agency Account Flow
+- [ ] Day 1-2: Business account setup for one connected site
+- [ ] Day 3-4: Agency account setup for multiple client sites
+- [ ] Day 5: Pricing metadata for Business and Agency plans
+- [ ] Day 6-7: WordPress connection validation and audit history
 
-### Week 4: Documentation & Testing
-- [ ] Day 1-2: User documentation
-- [ ] Day 3-4: API documentation
-- [ ] Day 5: Comprehensive testing
-- [ ] Day 6: Bug fixes
-- [ ] Day 7: Deployment and verification
+### Week 4: Launch Verification
+- [ ] Day 1-2: Test with Gutenberg and Elementor sites
+- [ ] Day 3: Test with common SEO plugins installed
+- [ ] Day 4: Create Business and Agency onboarding docs
+- [ ] Day 5: Smoke test deployed SaaS and plugin API together
+- [ ] Day 6-7: Fix issues, redeploy, and capture verification screenshots
 
 ---
 
@@ -966,18 +1071,18 @@ The SEO AutoFix Pro project has a solid foundation with:
 - ✅ Active Trigger.dev integration (11 tasks)
 
 **Key Areas for Improvement:**
-1. Database setup and migration
-2. User authentication and multi-tenancy
-3. Plugin fixes (title editing, WebP, redirects)
-4. Web app enhancements (audit history, content editor)
-5. Trigger.dev improvements (error handling, progress tracking)
+1. WordPress plugin reliability in real user environments
+2. Business and Agency account flows
+3. Plugin fixes with clear before/after verification
+4. SEO-first automation, then GEO and AEO expansion
+5. Documentation that helps non-technical users succeed
 
 **Immediate Priority:**
-1. Set up database and run migrations
+1. Verify the plugin on a clean WordPress install
 2. Implement critical plugin fixes
-3. Add user authentication
-4. Add audit history and comparison
-5. Comprehensive testing
+3. Remove AI calling receptionist / Retell AI from launch scope
+4. Define Business and Agency pricing limits
+5. Test, deploy, screenshot, and repeat until the user flow is solid
 
 **Success Definition:**
 - 1000+ plugin installations in 6 months

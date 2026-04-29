@@ -130,6 +130,7 @@ async function validatePluginConnection(siteUrl: string, apiKey: string) {
       headers: {
         "Content-Type": "application/json",
         "X-SEO-AutoFix-Key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -157,6 +158,7 @@ async function validatePluginConnection(siteUrl: string, apiKey: string) {
       headers: {
         "Content-Type": "application/json",
         "X-SEO-AutoFix-Key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -169,15 +171,16 @@ async function validatePluginConnection(siteUrl: string, apiKey: string) {
     }
 
     isValid = true;
+    const features = statusData?.features || {};
 
     // Check for warnings
-    if (!verifyData.features?.https) {
+    if (!features.https) {
       warnings.push("Site is not using HTTPS");
     }
-    if (!verifyData.features?.gd_library) {
+    if (!features.gd_library) {
       warnings.push("GD library not available for image processing");
     }
-    if (!verifyData.features?.webp_support) {
+    if (!features.webp_support) {
       warnings.push("WebP support not available");
     }
 
@@ -192,7 +195,7 @@ async function validatePluginConnection(siteUrl: string, apiKey: string) {
         siteName: verifyData.name,
         siteUrl: verifyData.site,
         stats: statusData?.stats || null,
-        features: verifyData.features || null,
+        features,
       },
     };
   } catch (error) {

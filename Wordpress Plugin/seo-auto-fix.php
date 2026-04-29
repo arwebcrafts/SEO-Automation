@@ -3,7 +3,7 @@
 Plugin Name: SEO AutoFix Pro
 Plugin URI: https://example.com
 Description: Complete SEO toolkit with remote API - AI alt text, image optimization, broken link checker, meta editor, schema markup, security headers, and auto-fix integration.
-Version: 6.0.6
+Version: 6.0.7
 Requires at least: 5.0
 Requires PHP: 7.0
 Author: SEO AutoFix Team
@@ -13,8 +13,27 @@ Text Domain: seo-auto-fix
 
 defined('ABSPATH') || exit;
 
-define('SEO_AUTOFIX_VERSION', '6.0.6');
-define('SEO_AUDIT_API_URL', 'https://seo-audit-tool.vercel.app');
+define('SEO_AUTOFIX_VERSION', '6.0.7');
+if (!defined('SEO_AUDIT_API_URL')) {
+    $seo_autofix_saas_base = '';
+    if (function_exists('get_option')) {
+        $seo_autofix_settings_early = get_option('seo_autofix_settings', array());
+        if (!empty($seo_autofix_settings_early['saas_api_base']) && is_string($seo_autofix_settings_early['saas_api_base'])) {
+            $candidate = rtrim(trim($seo_autofix_settings_early['saas_api_base']), '/');
+            if (preg_match('#^https?://#i', $candidate)) {
+                $seo_autofix_saas_base = $candidate;
+            }
+        }
+    }
+    $seo_autofix_saas_default = 'https://seo-audit-tool.vercel.app';
+    $seo_autofix_filtered = function_exists('apply_filters')
+        ? apply_filters('seo_autofix_audit_api_url', $seo_autofix_saas_default)
+        : $seo_autofix_saas_default;
+    define(
+        'SEO_AUDIT_API_URL',
+        $seo_autofix_saas_base !== '' ? $seo_autofix_saas_base : $seo_autofix_filtered
+    );
+}
 
 // Register REST API routes immediately on plugin load
 add_action('rest_api_init', function() {
@@ -132,6 +151,7 @@ require_once SEO_AUTOFIX_PATH . 'includes/class-seo-autofix-accessibility.php';
 require_once SEO_AUTOFIX_PATH . 'includes/class-seo-autofix-advanced.php';
 require_once SEO_AUTOFIX_PATH . 'includes/class-seo-autofix-content.php';
 require_once SEO_AUTOFIX_PATH . 'includes/admin-pages.php';
+require_once SEO_AUTOFIX_PATH . 'includes/class-seo-autofix-chatbot-embed.php';
 
 // Activation
 register_activation_hook(__FILE__, 'seo_autofix_activate');
@@ -227,6 +247,7 @@ function seo_autofix_activate() {
         'custom_robots_txt' => '',
         'enable_sitemap' => true,
         'enable_remote_api' => true,
+        'saas_api_base' => '',
     );
     
     $existing = get_option('seo_autofix_settings', array());
@@ -500,8 +521,8 @@ function seo_autofix_register_rest_routes() {
         'permission_callback' => 'seo_autofix_api_permission',
     ));
     
-    // Verify/Rescan endpoint - checks current SEO status after fixes
-    register_rest_route($namespace, '/verify', array(
+    // Verify/Rescan endpoint - checks current SEO status after fixes.
+    register_rest_route($namespace, '/verify-status', array(
         'methods' => 'GET',
         'callback' => 'seo_autofix_api_verify_status',
         'permission_callback' => 'seo_autofix_api_permission',
@@ -2522,6 +2543,10 @@ function seo_autofix_settings_page() {
         $settings['enable_twitter_cards'] = isset($_POST['enable_twitter_cards']);
         $settings['enable_schema'] = isset($_POST['enable_schema']);
         $settings['enable_debug_log'] = isset($_POST['enable_debug_log']);
+        $settings['chatbot_embed_enabled'] = isset($_POST['chatbot_embed_enabled']);
+        $settings['chatbot_saas_site_id'] = sanitize_text_field($_POST['chatbot_saas_site_id'] ?? '');
+        $saas_raw = isset($_POST['saas_api_base']) ? trim((string) wp_unslash($_POST['saas_api_base'])) : '';
+        $settings['saas_api_base'] = $saas_raw === '' ? '' : esc_url_raw(rtrim($saas_raw, '/'));
         update_option('seo_autofix_settings', $settings);
         
         // Generate IndexNow key file if key is set
@@ -2559,7 +2584,15 @@ function seo_autofix_settings_page() {
                 
                 <h3>🔌 Remote API</h3>
                 <p><label><input type="checkbox" name="enable_remote_api" <?php checked(!empty($settings['enable_remote_api'])); ?>> Enable remote API access</label></p>
+                <p>SeoRise / SaaS app base URL (no trailing slash):<br>
+                <input type="url" name="saas_api_base" value="<?php echo esc_attr($settings['saas_api_base'] ?? ''); ?>" class="large-text code" placeholder="https://your-app.vercel.app"></p>
+                <p class="description">Used for remote fixes, chatbot widget <code>widget.js</code>, and handshake. Leave empty to use the default platform URL.</p>
                 <p>API Key: <code><?php echo esc_html(get_option('seo_autofix_api_key', 'Not generated yet')); ?></code></p>
+
+                <h3>💬 SeoRise Chatbot embed</h3>
+                <p class="description">Outputs the same widget script as on other platforms. Requires a Complete (or white-label) plan and allowed domains in the SeoRise dashboard.</p>
+                <p><label><input type="checkbox" name="chatbot_embed_enabled" <?php checked(!empty($settings['chatbot_embed_enabled'])); ?>> Inject chatbot snippet in footer</label></p>
+                <p>Connected site ID (from SeoRise): <input type="text" name="chatbot_saas_site_id" value="<?php echo esc_attr($settings['chatbot_saas_site_id'] ?? ''); ?>" class="regular-text" placeholder="cuid from dashboard"></p>
                 
                 <h3>🐛 Debug</h3>
                 <p><label><input type="checkbox" name="enable_debug_log" <?php checked(!empty($settings['enable_debug_log'])); ?>> Enable debug logging</label></p>

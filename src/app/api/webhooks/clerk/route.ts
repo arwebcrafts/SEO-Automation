@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Webhook } from 'svix'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as any
   } catch (err) {
-    console.error('Error verifying webhook:', err)
+    logger.error('Clerk webhook verify failed', { error: String(err) })
     return new Response('Error occurred', {
       status: 400,
     })
@@ -55,9 +56,9 @@ export async function POST(req: Request) {
         },
       })
 
-      console.log(`User created: ${id}`)
+      logger.info('Clerk user created', { clerkId: id })
     } catch (error) {
-      console.error('Error creating user:', error)
+      logger.error('Clerk user create failed', { error: String(error) })
     }
   }
 
@@ -73,9 +74,9 @@ export async function POST(req: Request) {
         },
       })
 
-      console.log(`User updated: ${id}`)
+      logger.info('Clerk user updated', { clerkId: id })
     } catch (error) {
-      console.error('Error updating user:', error)
+      logger.error('Clerk user update failed', { error: String(error) })
     }
   }
 
@@ -87,9 +88,9 @@ export async function POST(req: Request) {
         where: { clerkUserId: id },
       })
 
-      console.log(`User deleted: ${id}`)
+      logger.info('Clerk user deleted', { clerkId: id })
     } catch (error) {
-      console.error('Error deleting user:', error)
+      logger.error('Clerk user delete failed', { error: String(error) })
     }
   }
 

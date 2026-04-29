@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && npm run build:widget && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 100 --ignore-path .gitignore",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -16,7 +16,8 @@
     "trigger:deploy": "npx trigger.dev@latest deploy",
     "test:wordpress": "node scripts/test-wordpress-api.js",
     "test:content-publishing": "node scripts/test-content-publishing.js",
-    "debug:wordpress": "node scripts/debug-wordpress-config.js"
+    "debug:wordpress": "node scripts/debug-wordpress-config.js",
+    "build:widget": "esbuild src/chatbot-widget/widget.ts --bundle --minify --outfile=public/widget.js --format=iife --global-name=SeoRiseChatbot"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.12",
@@ -65,12 +66,14 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "resend": "^6.9.1",
-    "seo-audit-tool": "file:",
     "svix": "^1.84.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.23.8",
-    "zustand": "^5.0.1"
+    "zustand": "^5.0.1",
+    "stripe": "^17.5.0",
+    "@sendgrid/mail": "^8.1.4",
+    "papaparse": "^5.5.2"
   },
   "devDependencies": {
     "@types/jsdom": "^27.0.0",
@@ -82,7 +85,9 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.16",
     "postcss": "^8.4.47",
+    "esbuild": "^0.24.2",
     "prisma": "^5.22.0",
+    "@types/papaparse": "^5.3.15",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3"
   }

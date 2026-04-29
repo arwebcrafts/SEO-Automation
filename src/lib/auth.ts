@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function getCurrentUser() {
   const { userId: clerkUserId } = await auth();
@@ -24,9 +25,12 @@ export async function getCurrentUser() {
           name: `${clerkUser?.firstName || ''} ${clerkUser?.lastName || ''}`.trim() || undefined,
         },
       });
-      console.log(`[Auth] Created new user: ${user.id} for Clerk user: ${clerkUserId}`);
+      logger.info("Auth: created user", { userId: user.id, clerkUserId });
     } catch (error) {
-      console.error(`[Auth] Failed to create user for Clerk user: ${clerkUserId}`, error);
+      logger.error("Auth: failed to create user", {
+        clerkUserId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

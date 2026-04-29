@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Onboarding error:", error);
+    logger.error("Onboarding error", { error: String(error) });
     return NextResponse.json(
       { error: "Failed to complete onboarding" },
       { status: 500 }
@@ -112,7 +113,7 @@ export async function GET() {
       agency: userData?.ownedAgency || userData?.agencyMemberships[0]?.agency || null,
     });
   } catch (error) {
-    console.error("Get onboarding status error:", error);
+    logger.error("Get onboarding status error", { error: String(error) });
     return NextResponse.json(
       { error: "Failed to get onboarding status" },
       { status: 500 }

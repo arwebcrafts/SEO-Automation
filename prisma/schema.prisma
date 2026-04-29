@@ -35,6 +35,19 @@ model User {
   updatedAt        DateTime          @updatedAt
   onboardingCompleted Boolean        @default(false)
 
+  stripeCustomerId        String?   @unique
+  stripeSubscriptionId    String?
+  stripeCurrentPeriodEnd  DateTime?
+  wlMaxSites              Int?
+  wlLogoUrl               String?
+  wlDisplayName           String?
+  wlFromEmail             String?
+  openaiApiKeyEncrypted   String?
+  sendgridApiKeyEncrypted String?
+
+  aiUsages AiUsage[]
+  wordPressSites WordPressSite[]
+
   @@index([clerkUserId])
 }
 
@@ -209,6 +222,7 @@ model Session {
 
 enum Plan {
   FREE
+  STARTER
   PRO
   AGENCY
   WHITE_LABEL
@@ -341,21 +355,144 @@ model CachedResult {
 model WordPressSite {
   id            String   @id @default(cuid())
   userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   siteUrl       String
   apiKey        String   // SEO AutoFix plugin API key
   wpUsername    String?
   wpAppPassword String?  // WordPress application password for REST API
   isActive      Boolean  @default(true)
-  
+  gbpPlaceId    String?
+
   scheduledContent ScheduledContent[]
   keywords         Keyword[]
   contentPlans     ContentPlan[]
-  
+  gbpSnapshot      GbpSnapshot?
+  contacts         Contact[]
+  reviewSettings   ReviewSettings?
+  reviewRequests   ReviewRequest[]
+  reviewCounts     ReviewCount[]
+  chatbotConfig    ChatbotConfig?
+  chatbotLeads     ChatbotLead[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([userId, siteUrl])
+  @@index([userId])
+}
+
+model GbpSnapshot {
+  id              String   @id @default(cuid())
+  wordpressSiteId String   @unique
+  placeId         String
+  name            String
+  address         String
+  rating          Float?
+  reviewCount     Int?
+  isVerified      Boolean  @default(false)
+  hoursJson       Json?
+  categoriesJson  Json?
+  phone           String?
+  websiteUri      String?
+  cachedAt        DateTime @default(now())
+  wordpressSite   WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id               String    @id @default(cuid())
+  wordpressSiteId  String
+  name             String
+  email            String?
+  phone            String?
+  source           String    @default("manual")
+  serviceDate      DateTime?
+  optedOut         Boolean   @default(false)
+  unsubscribeToken String?   @unique
+  createdAt        DateTime  @default(now())
+  wordpressSite   WordPressSite  @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+  reviewRequests  ReviewRequest[]
+  @@index([wordpressSiteId])
+  @@index([email, wordpressSiteId])
+}
+
+model ReviewRequest {
+  id              String    @id @default(cuid())
+  contactId       String
+  wordpressSiteId String
+  channel         String    @default("email")
+  status          String    @default("pending")
+  messageType     String
+  sentAt          DateTime?
+  scheduledFor    DateTime
+  createdAt       DateTime  @default(now())
+  contact         Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  wordpressSite   WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+  @@index([wordpressSiteId])
+  @@index([scheduledFor, status])
+}
+
+model ReviewSettings {
+  id                  String   @id @default(cuid())
+  wordpressSiteId     String   @unique
+  isEnabled           Boolean  @default(true)
+  delayHours          Int      @default(3)
+  followUpEnabled     Boolean  @default(true)
+  followUpDelayDays   Int      @default(3)
+  emailSubject        String   @default("How was your experience with {business}?")
+  emailTemplate       String?  @db.Text
+  followUpTemplate    String?  @db.Text
+  sendgridApiKey      String?
+  fromEmail           String?
+  fromName            String?
+  reviewLinkBase      String?
+  wordpressSite       WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+}
+
+model ReviewCount {
+  id              String   @id @default(cuid())
+  wordpressSiteId String
+  count           Int
+  recordedAt      DateTime @default(now())
+  wordpressSite   WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+  @@index([wordpressSiteId])
+}
+
+model ChatbotConfig {
+  id               String   @id @default(cuid())
+  wordpressSiteId  String   @unique
+  isEnabled        Boolean  @default(false)
+  allowedDomains   String[]
+  businessName     String
+  greeting         String   @default("Hi! How can we help?")
+  primaryColor     String   @default("#2563eb")
+  systemPrompt     String   @db.Text
+  leadFormEnabled  Boolean  @default(true)
+  wordpressSite    WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+}
+
+model ChatbotLead {
+  id               String   @id @default(cuid())
+  wordpressSiteId  String
+  name             String?
+  email            String?
+  phone            String?
+  firstMessage     String
+  sourceHost       String?
+  createdAt        DateTime @default(now())
+  wordpressSite    WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+  @@index([wordpressSiteId])
+}
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      Int
+  month     Int
+  callCount Int      @default(0)
+  updatedAt DateTime @updatedAt
+  @@unique([userId, year, month])
   @@index([userId])
 }
 

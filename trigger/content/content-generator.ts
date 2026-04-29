@@ -245,7 +245,18 @@ KEYWORD INTEGRATION:
 - Weave keywords naturally into the text
 - Don't force keywords where they don't fit
 - Vary keyword placement - some in headings, some in body text
-- Never stuff keywords unnaturally`;
+- Never stuff keywords unnaturally
+
+AEO (ANSWER ENGINES):
+- Prefer clear H2/H3 phrased as natural questions where it fits the outline
+- Open key sections with a short definitional sentence (what/who/where) before detail
+- Add a concise FAQ-style subsection when the topic invites common questions (use ## FAQ with ### questions)
+- Keep local intent explicit (city/region/service area) when search intent is local
+
+GEO (GENERATIVE / AI SEARCH READINESS):
+- Use consistent entity naming (business/service names) aligned with how a brand would appear in structured data
+- State NAP-style facts (service area, core services) plainly in prose where relevant — no keyword stuffing
+- Prefer scannable lists and factual bullets models can quote safely`;
 }
 
 async function generateImageForContent(combination: ContentCombination): Promise<string> {

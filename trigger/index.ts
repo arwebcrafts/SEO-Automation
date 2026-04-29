@@ -13,3 +13,5 @@ export * from "./content/content-extractor";
 export * from "./content/content-analyzer";
 export * from "./content/content-generator";
 export * from "./content/auto-discovery";
+export * from "./gbp/refresh-gbp";
+export * from "./reviews/send-review-requests";

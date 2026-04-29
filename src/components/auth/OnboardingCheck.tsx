@@ -6,13 +6,24 @@ import { useAuth } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 
 // Pages that don't require onboarding check
-const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/onboarding", "/sso-callback"];
+const PUBLIC_PATHS = [
+  "/",
+  "/scan",
+  "/sign-in",
+  "/sign-up",
+  "/onboarding",
+  "/sso-callback",
+  "/about",
+  "/contact",
+  "/services",
+  "/pricing",
+];
 const EXCLUDED_PATHS = ["/api", "/_next", "/favicon", "/downloads"];
 
 interface OnboardingStatus {
   onboardingCompleted: boolean;
   accountType: string;
-  agency: any | null;
+  agency: unknown | null;
 }
 
 export function OnboardingCheck({ children }: { children: React.ReactNode }) {

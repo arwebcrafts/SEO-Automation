@@ -24,21 +24,7 @@ class SEO_AutoFix_Content {
     
     public function register_endpoints() {
         $namespace = 'seo-autofix/v1';
-        
-        // Publish content endpoint
-        register_rest_route($namespace, '/content/publish', array(
-            'methods' => 'POST',
-            'callback' => array($this, 'api_publish_content'),
-            'permission_callback' => 'seo_autofix_api_permission',
-        ));
-        
-        // Update content endpoint
-        register_rest_route($namespace, '/content/update', array(
-            'methods' => 'POST',
-            'callback' => array($this, 'api_update_content'),
-            'permission_callback' => 'seo_autofix_api_permission',
-        ));
-        
+
         // Get categories endpoint
         register_rest_route($namespace, '/content/categories', array(
             'methods' => 'GET',

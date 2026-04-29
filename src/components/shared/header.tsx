@@ -2,13 +2,30 @@
 
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { Search, Zap, FileText, Calendar, Edit3, MapPin, Menu } from "lucide-react";
+import {
+  Search,
+  Zap,
+  FileText,
+  Calendar,
+  Edit3,
+  MapPin,
+  Menu,
+  CreditCard,
+  Building2,
+  Sparkles,
+  Globe,
+} from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
+    { href: "/about", label: "Why SeoRise", icon: Sparkles },
+    { href: "/services", label: "Services", icon: Globe },
+    { href: "/pricing", label: "Pricing", icon: CreditCard },
+    { href: "/agency", label: "Agency", icon: Building2 },
+    { href: "/reviews", label: "Reviews", icon: FileText },
     { href: "/history", label: "History", icon: FileText },
     { href: "/content-strategy", label: "Content Strategy", icon: Zap },
     { href: "/auto-content", label: "Auto-Content", icon: Zap, highlight: true },

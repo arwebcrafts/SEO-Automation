@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPlanLimits, hasActiveSubscription } from "@/lib/plan-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      users: users.map((user) => ({
+      users: users.map((user) => {
+        const limits = getPlanLimits(user);
+        return {
         id: user.id,
         email: user.email,
         name: user.name,
@@ -98,6 +101,12 @@ export async function GET(request: NextRequest) {
         plan: user.plan,
         onboardingCompleted: user.onboardingCompleted,
         createdAt: user.createdAt,
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        stripeCurrentPeriodEnd: user.stripeCurrentPeriodEnd,
+        subscriptionActive: hasActiveSubscription(user),
+        usesByok: Boolean(user.openaiApiKeyEncrypted),
+        platformAiIncluded: limits.platformAiIncluded,
         stats: {
           audits: user._count.audits,
           contentAnalyses: user._count.contentAnalyses,
@@ -112,7 +121,8 @@ export async function GET(request: NextRequest) {
               members: user.ownedAgency._count.members,
             }
           : null,
-      })),
+      };
+      }),
       pagination: {
         page,
         limit,

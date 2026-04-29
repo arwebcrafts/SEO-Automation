@@ -209,7 +209,8 @@ async function publishViaPlugin(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": apiKey,
+      "X-SEO-AutoFix-Key": apiKey,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       title: content.title,

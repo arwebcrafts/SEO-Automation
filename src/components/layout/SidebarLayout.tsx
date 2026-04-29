@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   BarChart3,
   Zap,
-  Calendar,
   History,
   ChevronLeft,
   ChevronRight,
@@ -17,27 +16,22 @@ import {
   X,
   Home,
   Target,
-  Settings,
-  Archive,
   FileText,
   Plus,
-  RefreshCw,
-  Download,
-  Share2,
-  Wand2,
   CalendarDays,
   Rocket,
   TrendingUp,
   Search,
   ClipboardCheck,
   FileEdit,
-  Clock,
-  CheckCircle2,
+  Bot,
+  Star,
 } from "lucide-react";
 import { TopHeader } from "./TopHeader";
 import OnboardingWalkthrough from "@/components/onboarding/OnboardingWalkthrough";
 import WebsiteSwitcher, { WebsiteSelector } from "@/components/content/WebsiteSwitcher";
 import { useContentStrategy, Website } from "@/contexts/ContentStrategyContext";
+import { AppAssistantBubble } from "@/components/app/AppAssistantBubble";
 
 interface NavItem {
   id: string;
@@ -55,36 +49,47 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Organized navigation with Audit and Content main sections
 const navSections: NavSection[] = [
   {
-    id: "audit",
-    label: "Audit",
-    icon: ClipboardCheck,
+    id: "today",
+    label: "Home",
+    icon: Home,
+    items: [{ id: "command", label: "Command center", icon: LayoutDashboard, href: "/" }],
+  },
+  {
+    id: "pipeline",
+    label: "Leads & reputation",
+    icon: Star,
     items: [
-      { id: "home", label: "New Audit", icon: Plus, href: "/" },
-      { id: "audit-history", label: "History", icon: History, href: "/history?tab=audits" },
+      { id: "reviews", label: "Review requests", icon: Star, href: "/reviews" },
+      { id: "chatbot", label: "Site assistant", icon: Bot, href: "/chatbot" },
     ],
   },
   {
     id: "content",
-    label: "Content",
+    label: "Content studio",
     icon: FileEdit,
     items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/content-strategy?view=dashboard" },
-      { id: "strategy", label: "Strategy Hub", icon: BarChart3, href: "/content-strategy?view=analysis" },
-      { id: "production", label: "Quick Writer", icon: Zap, href: "/content-strategy?view=production" },
-      { id: "auto-pilot", label: "Auto Pilot", icon: Rocket, href: "/content-strategy?view=auto-pilot", badge: "New" },
+      { id: "dashboard", label: "Overview", icon: LayoutDashboard, href: "/content-strategy?view=dashboard" },
+      { id: "strategy", label: "Topics & gaps", icon: BarChart3, href: "/content-strategy?view=analysis" },
+      { id: "production", label: "Write drafts", icon: Zap, href: "/content-strategy?view=production" },
+      { id: "auto-pilot", label: "Scheduled posts", icon: Rocket, href: "/content-strategy?view=auto-pilot" },
       { id: "progress", label: "Progress", icon: TrendingUp, href: "/content-strategy?view=progress" },
       { id: "drafts", label: "Drafts", icon: FileText, href: "/content-strategy?view=drafts" },
       { id: "calendar", label: "Calendar", icon: CalendarDays, href: "/content-strategy?view=calendar" },
-      { id: "content-history", label: "History", icon: History, href: "/history?tab=content" },
+      { id: "content-history", label: "Activity log", icon: History, href: "/history?tab=content" },
+    ],
+  },
+  {
+    id: "audit",
+    label: "Website check",
+    icon: ClipboardCheck,
+    items: [
+      { id: "scan", label: "Run a check", icon: Search, href: "/scan" },
+      { id: "audit-history", label: "Past checks", icon: History, href: "/history?tab=audits" },
     ],
   },
 ];
-
-// Flatten for backward compatibility
-const navItems: NavItem[] = navSections.flatMap(section => section.items);
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -107,7 +112,12 @@ export default function SidebarLayout({
 }: SidebarLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<string[]>(["audit", "content"]);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    "today",
+    "pipeline",
+    "content",
+    "audit",
+  ]);
   const pathname = usePathname();
   const router = useRouter();
   
@@ -174,7 +184,7 @@ export default function SidebarLayout({
           </button>
           <div className="flex items-center gap-2">
             <Globe className="w-6 h-6 text-blue-600" />
-            <span className="font-bold text-lg">SEO Hub</span>
+            <span className="font-bold text-lg">SeoRise</span>
           </div>
         </div>
       </div>
@@ -198,7 +208,7 @@ export default function SidebarLayout({
           {!isCollapsed && (
             <div className="flex items-center gap-2">
               <Globe className="w-7 h-7 text-blue-600" />
-              <span className="font-bold text-xl text-slate-900 dark:text-slate-100">SEO Hub</span>
+              <span className="font-bold text-xl text-slate-900 dark:text-slate-100">SeoRise</span>
             </div>
           )}
           {isCollapsed && <Globe className="w-7 h-7 text-blue-600 mx-auto" />}
@@ -232,10 +242,10 @@ export default function SidebarLayout({
             className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg ${
               isCollapsed ? "px-2" : ""
             }`}
-            title={isCollapsed ? "New Strategy" : undefined}
+            title={isCollapsed ? "Connect site" : undefined}
           >
             <Plus className="w-5 h-5" />
-            {!isCollapsed && <span>New Strategy</span>}
+            {!isCollapsed && <span>Connect / switch site</span>}
           </button>
         </div>
 
@@ -275,12 +285,16 @@ export default function SidebarLayout({
                       const active = isActive(item);
                       
                       const onboardingId = {
-                        "strategy": "strategy-hub",
-                        "production": "quick-writer",
+                        strategy: "strategy-hub",
+                        production: "quick-writer",
                         "auto-pilot": "auto-pilot",
-                        "calendar": "calendar",
+                        calendar: "calendar",
                         "audit-history": "history",
                         "content-history": "history",
+                        scan: "scan",
+                        reviews: "reviews",
+                        chatbot: "chatbot",
+                        command: "command-center",
                       }[item.id];
 
                       return (
@@ -390,6 +404,8 @@ export default function SidebarLayout({
         onWebsiteSelect={handleWebsiteSelect}
         currentWebsiteId={activeWebsite?.id}
       />
+
+      <AppAssistantBubble />
     </div>
   );
 }

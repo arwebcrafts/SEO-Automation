@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPlanLimits } from "@/lib/plan-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,8 @@ export async function GET() {
     // Check if user is admin
     const isAdmin = userData.email === "mwaqarsikandar@gmail.com" || userData.role === "ADMIN";
 
+    const limits = getPlanLimits(userData);
+
     return NextResponse.json({
       user: {
         id: userData.id,
@@ -85,6 +88,16 @@ export async function GET() {
         accountType: userData.accountType,
         role: userData.role,
         onboardingCompleted: userData.onboardingCompleted,
+      },
+      plan: userData.plan,
+      limits: {
+        maxSites: limits.maxSites,
+        maxPostsPerMonth: limits.maxPostsPerMonth,
+        platformAiCallsPerMonth: limits.platformAiCallsPerMonth,
+        reviewsEnabled: limits.reviewsEnabled,
+        chatbotEnabled: limits.chatbotEnabled,
+        platformAiIncluded: limits.platformAiIncluded,
+        requiresByok: limits.requiresByok,
       },
       isAgency,
       isAdmin,

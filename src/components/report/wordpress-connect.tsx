@@ -14,7 +14,7 @@ interface FixResult {
   success: boolean;
   message?: string;
   fixed?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Dynamic fields from WordPress / API responses
   [key: string]: any;
 }
 
