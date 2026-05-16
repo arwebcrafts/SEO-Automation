@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getPlanLimits, type PlanType } from "@/lib/plan-limits";
 import { logger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
 
 const log = logger.child({ service: "reviews-guard" });
 
@@ -101,7 +102,7 @@ export async function recordReviewRequest(
       action: "review_request_sent",
       entityType: "review",
       description: `Review request sent to ${contactEmail}`,
-      metadata: metadata as Record<string, unknown>,
+      metadata: metadata as Prisma.InputJsonValue,
     },
   });
 }
