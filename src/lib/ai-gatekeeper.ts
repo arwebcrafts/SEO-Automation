@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { checkUsageLimit, type PlanType } from "@/lib/plan-limits";
 import { logger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
 
 const log = logger.child({ service: "ai-gatekeeper" });
 
@@ -69,7 +70,7 @@ export async function recordAiCall(
         action: "ai_call",
         entityType: "ai",
         description: `AI call: ${metadata?.feature || "general"}`,
-        metadata: metadata ? (metadata as Record<string, unknown>) : undefined,
+        metadata: metadata as Prisma.InputJsonValue,
       },
     });
   } catch (error) {

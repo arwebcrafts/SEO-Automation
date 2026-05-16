@@ -3,7 +3,7 @@
  * Usage: <script src="https://yourdomain.com/widget.js" data-site-id="your-site-id"></script>
  */
 (function () {
-  const script = document.currentScript;
+  const script = document.currentScript as HTMLScriptElement;
   const siteId = script?.getAttribute("data-site-id");
   if (!siteId) return console.error("[SEO Hub Chatbot] Missing data-site-id");
 
