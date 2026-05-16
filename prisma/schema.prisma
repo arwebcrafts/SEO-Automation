@@ -651,3 +651,277 @@ model UserActivity {
   @@index([createdAt])
   @@index([clientId])
 }
+
+// ==================== WORKSPACE MANAGEMENT ====================
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  ownerId     String
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+// ==================== RANK TRACKING ====================
+
+model RankTracking {
+  id          String   @id @default(cuid())
+  userId      String
+  domain      String
+  keyword     String
+  position    Int?
+  previousPosition Int?
+  searchEngine String  @default("google")
+  device       String  @default("desktop")
+  location     String?
+  searchVolume Int?
+  url          String?
+  trackedAt    DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([userId, domain])
+  @@index([keyword])
+  @@index([trackedAt])
+}
+
+// ==================== WEEKLY REPORTS ====================
+
+model WeeklyReport {
+  id          String   @id @default(cuid())
+  userId      String
+  domain      String
+  reportData  Json
+  emailSentTo String?
+  emailSentAt DateTime?
+  period      String   // e.g. "2026-W20"
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([domain])
+  @@index([period])
+}
+
+// ==================== EMAIL TEMPLATES & DRIP CAMPAIGNS ====================
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  subject     String
+  htmlContent String   @db.Text
+  textContent String?  @db.Text
+  category    String   @default("general")
+  variables   String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+}
+
+model DripCampaign {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  status      String   @default("draft") // draft, active, paused, completed
+  trigger     String   @default("manual") // manual, signup, audit_complete
+  steps       DripStep[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model DripStep {
+  id           String       @id @default(cuid())
+  campaignId   String
+  campaign     DripCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  stepOrder    Int
+  delayMinutes Int          @default(0)
+  subject      String
+  htmlContent  String       @db.Text
+  sent         Int          @default(0)
+  opened       Int          @default(0)
+  clicked      Int          @default(0)
+  createdAt    DateTime     @default(now())
+
+  @@index([campaignId])
+}
+
+// ==================== REVIEW MANAGEMENT ====================
+
+model ReviewContact {
+  id          String   @id @default(cuid())
+  userId      String
+  email       String
+  name        String
+  phone       String?
+  tags        String[]
+  unsubscribed Boolean @default(false)
+  lastSentAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, email])
+  @@index([userId])
+}
+
+model ReviewRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  contactEmail String
+  contactName  String
+  businessName String
+  reviewUrl    String
+  status       String   @default("pending") // pending, sent, opened, reviewed
+  sentAt       DateTime?
+  openedAt     DateTime?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model ReviewSettings {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  businessName  String?
+  reviewUrl     String?
+  emailSubject  String?
+  emailTemplate String?  @db.Text
+  autoSend      Boolean  @default(false)
+  sendDelay     Int      @default(24) // hours after service
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ==================== CHATBOT ====================
+
+model ChatbotConfig {
+  id              String   @id @default(cuid())
+  userId          String
+  siteId          String   @unique
+  siteName        String?
+  siteUrl         String?
+  welcomeMessage  String   @default("Hi! How can I help you today?")
+  primaryColor    String   @default("#3b82f6")
+  position        String   @default("bottom-right")
+  allowedDomains  String[]
+  systemPrompt    String?  @db.Text
+  collectEmail    Boolean  @default(true)
+  collectPhone    Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ChatbotLead {
+  id          String   @id @default(cuid())
+  siteId      String
+  name        String?
+  email       String?
+  phone       String?
+  message     String?  @db.Text
+  source      String?  // page URL
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([siteId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model ChatbotMessage {
+  id          String   @id @default(cuid())
+  siteId      String
+  sessionId   String
+  role        String   // user, assistant
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([siteId])
+  @@index([sessionId])
+}
+
+// ==================== GEO AUDIT & LOCATION PAGES ====================
+
+model GeoAudit {
+  id          String   @id @default(cuid())
+  userId      String
+  domain      String
+  location    String
+  results     Json?
+  score       Int?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([domain])
+}
+
+model LocationPage {
+  id           String   @id @default(cuid())
+  userId       String
+  domain       String
+  location     String
+  title        String
+  slug         String
+  content      String   @db.Text
+  metaDesc     String?
+  keywords     String[]
+  status       String   @default("draft")
+  publishedUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([domain])
+}
+
+// ==================== USER API KEYS (BYOK) ====================
+
+model UserApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   // openai, anthropic, openrouter
+  encryptedKey String
+  label        String?
+  isActive     Boolean  @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+// ==================== BILLING ====================
+
+model BillingSubscription {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  stripeCustomerId   String?  @unique
+  stripeSubscriptionId String? @unique
+  plan               String   @default("FREE")
+  status             String   @default("active") // active, past_due, canceled, trialing
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([stripeCustomerId])
+}
