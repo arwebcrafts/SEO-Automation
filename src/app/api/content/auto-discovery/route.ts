@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { prisma } from "@/lib/prisma";
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       taskId: handle.id,
       message: "Auto-discovery process started",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Auto-Discovery] Error:", error);
     return NextResponse.json(
       { error: "Failed to start auto-discovery", details: String(error) },
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
       source: "mock-data"
     });
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Auto-Discovery] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch discovery data", details: String(error) },

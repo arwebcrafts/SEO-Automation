@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         estimatedLinkJuice: sortedSuggestions.reduce((sum, s) => sum + s.suggestedLink.authorityScore, 0)
       }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Internal Links] Error:", error);
     return NextResponse.json(
       { error: "Failed to analyze internal links", details: String(error) },
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
       success: true,
       analytics: mockAnalytics,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Internal Links GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch internal link analytics", details: String(error) },

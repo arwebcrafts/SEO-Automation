@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -576,7 +576,7 @@ export async function POST(request: NextRequest) {
         message: imageStatusMessage
       }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[WordPress Publish] Error:", error);
     
     // Store failed publish attempt
@@ -646,7 +646,7 @@ export async function GET(request: NextRequest) {
       success: true,
       ...(postId ? { post: responseData.post } : { posts: responseData.posts }),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[WordPress Publish GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch WordPress data", details: String(error) },

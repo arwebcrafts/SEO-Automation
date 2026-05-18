@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export async function GET() {
       configured,
       from: process.env.EMAIL_FROM || "notifications@seoaudit.app",
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch provider config" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch provider config");
   }
 }

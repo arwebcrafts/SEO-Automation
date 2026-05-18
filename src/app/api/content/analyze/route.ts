@@ -3,7 +3,7 @@ import { tasks, configure, runs } from "@trigger.dev/sdk/v3";
 import type { contentExtractorTask } from "@/trigger/content/content-extractor";
 import type { contentAnalyzerTask } from "@/trigger/content/content-analyzer";
 import { getRunOutput } from "@/lib/trigger-utils";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       analysisRunId: analysisHandle.id,
       message: "Content analysis started successfully",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error in content analysis:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to start content analysis";
     return NextResponse.json(
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       } else if (extractionRun.status === "FAILED") {
         extractionError = (extractionRun as any).error?.message || "Extraction failed";
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching extraction run:", error);
       extractionStatus = "ERROR";
       extractionError = error instanceof Error ? error.message : "Unknown error";
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
       } else if (analysisRun.status === "FAILED") {
         analysisError = (analysisRun as any).error?.message || "Analysis failed";
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching analysis run:", error);
       analysisStatus = "ERROR";
       analysisError = error instanceof Error ? error.message : "Unknown error";
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
       isComplete,
       hasFailed,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching analysis status:", error);
     return NextResponse.json(
       { 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt, generateApiKey, maskKey } from "@/lib/encryption";
 
@@ -12,8 +12,8 @@ export async function GET() {
     return NextResponse.json({
       keys: keys.map((k) => ({ id: k.id, provider: k.provider, label: k.label, maskedKey: maskKey(decrypt(k.encryptedKey)), isActive: k.isActive, lastUsedAt: k.lastUsedAt, createdAt: k.createdAt })),
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch keys");
   }
 }
 
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, id: key.id, maskedKey: maskKey(apiKey) });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to save key" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to save key");
   }
 }
 
@@ -45,7 +45,7 @@ export async function DELETE(request: NextRequest) {
 
     await prisma.userApiKey.deleteMany({ where: { id, userId: user.id } });
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete key" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to delete key");
   }
 }

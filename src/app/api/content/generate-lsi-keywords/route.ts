@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import OpenAI from "openai";
 
 export const dynamic = "force-dynamic";
@@ -96,7 +96,7 @@ Return ONLY a valid JSON object with this structure:
       keywords: validKeywords,
       seedKeywords,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[LSI Keywords] Error:", error);
     return NextResponse.json(
       { error: "Failed to generate LSI keywords", details: String(error) },

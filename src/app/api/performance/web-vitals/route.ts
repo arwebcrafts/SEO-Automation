@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       scheduled: scheduleWeekly,
       message: "Performance analysis completed",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Web Vitals] Error:", error);
     return NextResponse.json(
       { error: "Failed to analyze web vitals", details: String(error) },
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: mockHistoricalData,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Web Vitals GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch performance data", details: String(error) },

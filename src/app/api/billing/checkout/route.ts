@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { createCheckoutSession, STRIPE_PRICES } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Billing Checkout] Error:", error);
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
+    return handleApiError(error, "Failed to create checkout session");
   }
 }

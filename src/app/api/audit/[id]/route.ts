@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +67,7 @@ export async function GET(
     }
 
     return NextResponse.json(audit);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Audit fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch audit" },

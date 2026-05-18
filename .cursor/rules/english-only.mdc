@@ -1,0 +1,10 @@
+---
+description: Use English for all project work
+alwaysApply: true
+---
+
+# English-Only Project Communication
+
+- Use English for all repo work: code comments, documentation, UI copy, commit messages, plans, summaries, and chat responses.
+- Keep technical names, APIs, and quoted user text unchanged when needed.
+- Only use another language if the user explicitly requests it for a specific task.

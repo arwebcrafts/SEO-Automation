@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       total,
       hasMore: offset + limit < total,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[WordPress History] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch WordPress publishing history", details: String(error) },

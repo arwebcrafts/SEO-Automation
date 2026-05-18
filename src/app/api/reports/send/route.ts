@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { sendEmail } from "@/lib/email-engine";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: result.success, messageId: result.messageId });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to send report" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to send report");
   }
 }

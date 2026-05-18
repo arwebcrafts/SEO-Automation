@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       analysis: mockAnalysis,
       message: "Competitor benchmark analysis completed",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Competitor Benchmark] Error:", error);
     return NextResponse.json(
       { error: "Failed to analyze competitor", details: String(error) },
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
       success: true,
       history: mockHistory,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Competitor Benchmark GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch benchmark history", details: String(error) },

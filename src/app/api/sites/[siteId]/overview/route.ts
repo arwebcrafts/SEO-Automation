@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       site: { id: site.id, name: site.name, url: site.siteUrl, isActive: site.isActive },
       overview: { totalContent: contentCount, published: publishedCount, scheduled: scheduledCount, recentContent },
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch overview" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch overview");
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ members });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get members error:", error);
     return NextResponse.json(
       { error: "Failed to get members" },
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     // TODO: Send invitation email
 
     return NextResponse.json({ success: true, membership });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Invite member error:", error);
     return NextResponse.json(
       { error: "Failed to invite member" },
@@ -227,7 +227,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, member: updatedMember });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Update member error:", error);
     return NextResponse.json(
       { error: "Failed to update member" },
@@ -284,7 +284,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.agencyMember.delete({ where: { id: memberId } });
 
     return NextResponse.json({ success: true, message: "Member removed" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Remove member error:", error);
     return NextResponse.json(
       { error: "Failed to remove member" },

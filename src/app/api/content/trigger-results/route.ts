@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       taskId
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Trigger Results] Error:", error);
     return NextResponse.json(
       { error: "Failed to get trigger results", details: String(error) },

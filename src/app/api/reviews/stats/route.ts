@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export async function GET() {
         reviewRate: totalSent > 0 ? Math.round((reviewed / totalSent) * 100) : 0,
       },
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch stats");
   }
 }

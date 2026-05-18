@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       wordpressSite = await prisma.wordPressSite.findFirst({
         where: { userId: user.id },
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[Draft Creation] Error finding WordPress site:", error);
     }
 
@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
             apiKey: "placeholder-key",
           },
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[Draft Creation] Error creating default WordPress site:", error);
-        return NextResponse.json({ error: "Failed to create WordPress site" }, { status: 500 });
+        return handleApiError(error, "Failed to create WordPress site");
       }
     }
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         keywords,
       }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Draft Creation] ERROR:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create draft" },

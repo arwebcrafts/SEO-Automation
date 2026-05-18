@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +102,7 @@ export async function GET() {
       role: userWithAgency?.ownedAgency ? "OWNER" : membership?.role || "MEMBER",
       permissions: userWithAgency?.ownedAgency ? ["all"] : membership?.permissions || [],
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get agency error:", error);
     return NextResponse.json(
       { error: "Failed to get agency" },
@@ -141,7 +141,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, agency: updatedAgency });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Update agency error:", error);
     return NextResponse.json(
       { error: "Failed to update agency" },

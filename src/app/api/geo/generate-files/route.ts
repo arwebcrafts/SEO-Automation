@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ files, count: files.length });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to generate files" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to generate files");
   }
 }

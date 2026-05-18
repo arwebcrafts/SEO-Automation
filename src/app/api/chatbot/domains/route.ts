@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,8 @@ export async function GET() {
     const configs = await prisma.chatbotConfig.findMany({ where: { userId: user.id } });
     const domains = configs.map((c) => ({ siteId: c.siteId, domains: c.allowedDomains }));
     return NextResponse.json({ domains });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch domains" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch domains");
   }
 }
 
@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to update domains" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to update domains");
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 // SSRF Prevention: Block private/internal IPs
 const BLOCKED_IP_RANGES = [
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       headers,
       responseTime,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Proxy Fetch] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch URL" },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       totalCombinations: combinations.length,
       message: `Started generating ${combinations.length} piece${combinations.length === 1 ? '' : 's'} of content`,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Bulk Generate] Error:", error);
     return NextResponse.json(
       { error: "Failed to start content generation", details: String(error) },
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
         results: []
       });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Bulk Generate GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to get generation status", details: String(error) },
@@ -215,7 +215,7 @@ async function getTriggerDevTaskResults(taskId: string) {
       };
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Trigger.dev] Failed to get run results:", error);
     // If we can't get results, indicate that client-side MCP should be used
     return {

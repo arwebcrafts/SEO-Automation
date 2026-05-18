@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { createPortalSession } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
@@ -18,7 +18,7 @@ export async function POST() {
     const session = await createPortalSession(sub.stripeCustomerId, `${appUrl}/billing`);
 
     return NextResponse.json({ url: session.url });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to create portal session" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to create portal session");
   }
 }

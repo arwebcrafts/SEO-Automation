@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: sites });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching sites:", error);
     return NextResponse.json(
       { error: "Failed to fetch sites" },
@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: site });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating site:", error);
     return NextResponse.json(
       { error: "Failed to update site" },
@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: "Site deleted" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error deleting site:", error);
     return NextResponse.json(
       { error: "Failed to delete site" },

@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    await requireAuth();
     const leads = await prisma.chatbotLead.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
     });
     return NextResponse.json({ leads });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch leads");
   }
 }
 
@@ -26,7 +28,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, lead });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to capture lead" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to capture lead");
   }
 }
+

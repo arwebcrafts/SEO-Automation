@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json({ report });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to generate report");
   }
 }

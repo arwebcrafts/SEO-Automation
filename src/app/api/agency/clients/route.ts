@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ clients });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get clients error:", error);
     return NextResponse.json(
       { error: "Failed to get clients" },
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, client });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Create client error:", error);
     return NextResponse.json(
       { error: "Failed to create client" },
@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, client: updatedClient });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Update client error:", error);
     return NextResponse.json(
       { error: "Failed to update client" },
@@ -214,7 +214,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.agencyClient.delete({ where: { id } });
 
     return NextResponse.json({ success: true, message: "Client deleted" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Delete client error:", error);
     return NextResponse.json(
       { error: "Failed to delete client" },

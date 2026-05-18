@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ analyses });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching content analysis history:", error);
     return NextResponse.json(
       { error: "Failed to fetch content analysis history" },

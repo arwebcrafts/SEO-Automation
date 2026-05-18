@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ rankings });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Rank Tracking] GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch rankings" }, { status: 500 });
+    return handleApiError(error, "Failed to fetch rankings");
   }
 }
 
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       tracked: results.length,
       results,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Rank Tracking] POST error:", error);
-    return NextResponse.json({ error: "Failed to track rankings" }, { status: 500 });
+    return handleApiError(error, "Failed to track rankings");
   }
 }

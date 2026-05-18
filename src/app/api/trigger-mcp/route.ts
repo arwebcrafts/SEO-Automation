@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Trigger MCP] Error:", error);
     return NextResponse.json(
       { error: "Failed to process MCP request", details: String(error) },
@@ -81,7 +81,7 @@ async function getRunDetailsFromMCP(runId: string) {
       createdAt: run.createdAt,
       finishedAt: run.finishedAt
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Trigger MCP] Failed to get run details:", error);
     throw error;
   }

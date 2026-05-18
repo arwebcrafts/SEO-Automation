@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, audit: { ...audit, results, score: results.localSeoScore } });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[GEO Analyze] Error:", error);
-    return NextResponse.json({ error: "Failed to analyze location" }, { status: 500 });
+    return handleApiError(error, "Failed to analyze location");
   }
 }
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ audits });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch GEO audits" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch GEO audits");
   }
 }

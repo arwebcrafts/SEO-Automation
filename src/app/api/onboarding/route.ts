@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       success: true,
       user: updatedUser,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Onboarding error:", error);
     return NextResponse.json(
       { error: "Failed to complete onboarding" },
@@ -111,7 +111,7 @@ export async function GET() {
       accountType: userData?.accountType || "INDIVIDUAL",
       agency: userData?.ownedAgency || userData?.agencyMemberships[0]?.agency || null,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get onboarding status error:", error);
     return NextResponse.json(
       { error: "Failed to get onboarding status" },

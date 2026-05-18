@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     results.score = Math.round((results.checks.filter((c) => c.status === "pass").length / results.checks.length) * 100);
 
     return NextResponse.json({ results });
-  } catch (error) {
-    return NextResponse.json({ error: "Live audit failed" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Live audit failed");
   }
 }

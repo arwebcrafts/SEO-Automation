@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 // GET: Fetch scheduled content
 export async function GET(request: NextRequest) {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: content });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching scheduled content:", error);
     return NextResponse.json(
       { error: "Failed to fetch scheduled content" },
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: scheduledContent });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error creating scheduled content:", error);
     return NextResponse.json(
       { error: "Failed to create scheduled content" },
@@ -177,7 +177,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: updatedContent });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating scheduled content:", error);
     return NextResponse.json(
       { error: "Failed to update scheduled content" },
@@ -218,7 +218,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: "Content deleted" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error deleting scheduled content:", error);
     return NextResponse.json(
       { error: "Failed to delete scheduled content" },

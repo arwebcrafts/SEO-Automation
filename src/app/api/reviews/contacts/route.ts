@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,8 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ contacts });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch contacts" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch contacts");
   }
 }
 
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true, contacts: created });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to add contacts" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to add contacts");
   }
 }
 
@@ -49,7 +49,7 @@ export async function DELETE(request: NextRequest) {
 
     await prisma.reviewContact.deleteMany({ where: { id, userId: user.id } });
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete contact" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to delete contact");
   }
 }

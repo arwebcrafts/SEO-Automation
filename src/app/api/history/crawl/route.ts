@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       crawlHistory: filteredHistory.slice(0, limit),
       total: mockCrawlHistory.length,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Crawl history API error:", error);
     return NextResponse.json(
       { error: "Failed to get crawl history", details: String(error) },

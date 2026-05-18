@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +24,8 @@ export async function GET() {
         hideAppBranding: false,
       },
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch white-label config" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to fetch white-label config");
   }
 }
 
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, agency: updated });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to update white-label config" }, { status: 500 });
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to update white-label config");
   }
 }

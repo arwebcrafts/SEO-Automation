@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, post: updatedPost });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating post:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update post" },
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ posts });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch posts" },

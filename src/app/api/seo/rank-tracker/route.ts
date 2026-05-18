@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         lastUpdated: new Date().toISOString()
       }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Rank Tracker] Error:", error);
     return NextResponse.json(
       { error: "Failed to track keyword rankings", details: String(error) },
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: mockHistoricalData,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Rank Tracker GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch ranking data", details: String(error) },

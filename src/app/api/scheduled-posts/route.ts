@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       total,
       hasMore: offset + posts.length < total,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Scheduled Posts] Error fetching:", error);
     return NextResponse.json(
       { error: "Failed to fetch scheduled posts" },
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       message: `Successfully scheduled ${createdPosts.length} posts`,
       posts: createdPosts,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Scheduled Posts] Error creating:", error);
     return NextResponse.json(
       { error: "Failed to create scheduled posts" },
@@ -171,7 +171,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: "Post deleted successfully",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Scheduled Posts] Error deleting:", error);
     return NextResponse.json(
       { error: "Failed to delete scheduled post" },

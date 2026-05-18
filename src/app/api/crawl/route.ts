@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { tasks, auth, runs, configure } from "@trigger.dev/sdk/v3";
 import type { siteCrawlerTask } from "../../../../trigger/crawl/site-crawler";
 import { getRunOutput } from "@/lib/trigger-utils";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, handleApiError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     try {
       new URL(url);
       console.log(`[Crawl POST] URL validated: ${url}`);
-    } catch (error) {
+    } catch (error: unknown) {
       console.log(`[Crawl POST] Error: Invalid URL format - ${error}`);
       return NextResponse.json(
         { error: "Invalid URL format" },
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Crawl POST] Request completed in ${elapsed}ms. Response:`, { ...response, publicToken: `${publicToken.substring(0, 10)}...` });
 
     return NextResponse.json(response);
-  } catch (error) {
+  } catch (error: unknown) {
     const elapsed = Date.now() - startTime;
     console.error(`[Crawl POST] Error after ${elapsed}ms:`, error);
     return NextResponse.json(
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
     if (run.status === "COMPLETED") {
       try {
         output = await getRunOutput(runId);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error fetching output:", error);
       }
     }
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
         status: statusData,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const elapsed = Date.now() - startTime;
     console.error(`[Crawl GET] Error after ${elapsed}ms:`, error);
     return NextResponse.json(
