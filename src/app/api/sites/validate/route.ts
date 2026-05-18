@@ -1,48 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verify } from "jsonwebtoken";
+import { requireAuth, handleApiError } from "@/lib/auth";
+
 
 export const dynamic = "force-dynamic";
 
-// Helper function to get user from token
-async function getUserFromToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
 
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const decoded = verify(
-      token,
-      process.env.JWT_SECRET || "your-secret-key-change-in-production"
-    ) as { userId: string };
-
-    const session = await prisma.session.findUnique({
-      where: { token },
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      return null;
-    }
-
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserFromToken(request);
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    await requireAuth();
 
     const body = await request.json();
     const { siteUrl, apiKey, wpUsername, wpAppPassword } = body;
@@ -89,12 +56,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Site validation error:", error);
-    return NextResponse.json(
-      { error: "Failed to validate site connection" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error, "Failed to validate site connection");
   }
 }
 
@@ -195,7 +158,7 @@ async function validatePluginConnection(siteUrl: string, apiKey: string) {
         features: verifyData.features || null,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     errors.push(`Connection error: ${error instanceof Error ? error.message : "Unknown error"}`);
     return { isValid: false, errors, warnings, details: null };
   }
@@ -271,7 +234,7 @@ async function validateWordPressConnection(siteUrl: string, username: string, ap
         canAccessTags: tagsResponse.ok,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     errors.push(`WordPress connection error: ${error instanceof Error ? error.message : "Unknown error"}`);
     return { isValid: false, errors, warnings, details: null };
   }

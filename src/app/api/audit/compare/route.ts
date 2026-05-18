@@ -1,48 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verify } from "jsonwebtoken";
+import { requireAuth, handleApiError } from "@/lib/auth";
+
 
 export const dynamic = "force-dynamic";
 
-// Helper function to get user from token
-async function getUserFromToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const decoded = verify(
-      token,
-      process.env.JWT_SECRET || "your-secret-key-change-in-production"
-    ) as { userId: string };
-
-    const session = await prisma.session.findUnique({
-      where: { token },
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      return null;
-    }
-
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserFromToken(request);
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const user = await requireAuth();
 
     const { searchParams } = new URL(request.url);
     const domain = searchParams.get("domain");
@@ -57,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Get the two most recent audits for comparison
     const audits = await prisma.audit.findMany({
       where: {
-        userId,
+        userId: user.id,
         domain,
         status: "COMPLETED",
       },
@@ -226,7 +192,7 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Audit comparison error:", error);
     return NextResponse.json(
       { error: "Failed to compare audits" },

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+export const dynamic = "force-dynamic";
+
 
 // This endpoint will be called by cron-job.org every minute
 // It checks for scheduled content that needs to be published

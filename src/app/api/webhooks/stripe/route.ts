@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+export const dynamic = "force-dynamic";
+
 
 const log = logger.child({ service: "stripe-webhook" });
 
