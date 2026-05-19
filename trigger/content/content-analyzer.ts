@@ -345,17 +345,24 @@ export const contentAnalyzerTask = task({
 
           try {
             const extractionRun = await runs.retrieve(extractionRunId as string);
+            console.log(`[Content Analyzer] Extraction run status: ${extractionRun.status}, has output: ${!!extractionRun.output}`);
+            
             if (extractionRun.status === "COMPLETED") {
               const extractionOutput = await getRunOutput(extractionRunId as string);
-              if (extractionOutput?.extractedPages) {
+              console.log(`[Content Analyzer] Retrieved extraction output, has extractedPages: ${!!extractionOutput?.extractedPages}, pages count: ${extractionOutput?.extractedPages?.length || 0}`);
+              
+              if (extractionOutput?.extractedPages && extractionOutput.extractedPages.length > 0) {
                 finalExtractedPages = extractionOutput.extractedPages;
+                console.log(`[Content Analyzer] Successfully retrieved ${finalExtractedPages.length} extracted pages`);
                 break;
+              } else {
+                console.warn(`[Content Analyzer] Extraction output exists but no extractedPages found. Output keys:`, Object.keys(extractionOutput || {}));
               }
             } else if (extractionRun.status === "FAILED" || extractionRun.status === "CANCELED") {
               throw new Error(`Extraction failed with status: ${extractionRun.status}`);
             }
           } catch (error) {
-            console.error("Error checking extraction status:", error);
+            console.error("[Content Analyzer] Error checking extraction status:", error);
           }
 
           retries++;
