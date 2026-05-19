@@ -1,26 +1,6 @@
 import { task, metadata, runs } from "@trigger.dev/sdk";
 import OpenAI from "openai";
 
-// Helper to retrieve run output, handling offloaded outputs
-async function getRunOutput(runId: string): Promise<any> {
-  const run = await runs.retrieve(runId);
-  
-  // If output is offloaded to object storage, download it from the presigned URL
-  if ((run as any).outputPresignedUrl) {
-    console.log(`[getRunOutput] Downloading offloaded output from presigned URL...`);
-    const response = await fetch((run as any).outputPresignedUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download offloaded output: ${response.statusText}`);
-    }
-    const data = await response.json();
-    console.log(`[getRunOutput] Successfully downloaded offloaded output`);
-    return data;
-  }
-
-  // Otherwise return the output directly
-  return run.output;
-}
-
 interface ContentAnalysisPayload {
   baseUrl: string;
   targetAudience?: string;
@@ -345,24 +325,17 @@ export const contentAnalyzerTask = task({
 
           try {
             const extractionRun = await runs.retrieve(extractionRunId as string);
-            console.log(`[Content Analyzer] Extraction run status: ${extractionRun.status}, has output: ${!!extractionRun.output}`);
-            
             if (extractionRun.status === "COMPLETED") {
-              const extractionOutput = await getRunOutput(extractionRunId as string);
-              console.log(`[Content Analyzer] Retrieved extraction output, has extractedPages: ${!!extractionOutput?.extractedPages}, pages count: ${extractionOutput?.extractedPages?.length || 0}`);
-              
-              if (extractionOutput?.extractedPages && extractionOutput.extractedPages.length > 0) {
+              const extractionOutput = extractionRun.output as any;
+              if (extractionOutput?.extractedPages) {
                 finalExtractedPages = extractionOutput.extractedPages;
-                console.log(`[Content Analyzer] Successfully retrieved ${finalExtractedPages.length} extracted pages`);
                 break;
-              } else {
-                console.warn(`[Content Analyzer] Extraction output exists but no extractedPages found. Output keys:`, Object.keys(extractionOutput || {}));
               }
             } else if (extractionRun.status === "FAILED" || extractionRun.status === "CANCELED") {
               throw new Error(`Extraction failed with status: ${extractionRun.status}`);
             }
           } catch (error) {
-            console.error("[Content Analyzer] Error checking extraction status:", error);
+            console.error("Error checking extraction status:", error);
           }
 
           retries++;
