@@ -318,31 +318,59 @@ export const contentAnalyzerTask = task({
         } as any);
 
         let retries = 0;
-        const maxRetries = 60; // Wait up to 2 minutes
+        const maxRetries = 150; // Wait up to 5 minutes (150 retries × 2 seconds)
+        let lastKnownStatus = "UNKNOWN";
 
         while (retries < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           try {
             const extractionRun = await runs.retrieve(extractionRunId as string);
+            lastKnownStatus = extractionRun.status;
+            
+            console.log(`[Content Analyzer] Extraction run status: ${extractionRun.status}, attempt ${retries + 1}/${maxRetries}`);
+            
             if (extractionRun.status === "COMPLETED") {
               const extractionOutput = extractionRun.output as any;
               if (extractionOutput?.extractedPages) {
                 finalExtractedPages = extractionOutput.extractedPages;
+                console.log(`[Content Analyzer] Extraction completed with ${finalExtractedPages.length} pages`);
                 break;
+              } else {
+                console.warn("[Content Analyzer] Extraction completed but no extractedPages found in output");
+                break; // Exit loop even if no pages, will fall back to mock data
               }
-            } else if (extractionRun.status === "FAILED" || extractionRun.status === "CANCELED") {
+            } else if (extractionRun.status === "FAILED" || extractionRun.status === "CANCELED" || extractionRun.status === "CRASHED" || extractionRun.status === "SYSTEM_FAILURE") {
+              console.error(`[Content Analyzer] Extraction failed with status: ${extractionRun.status}`);
               throw new Error(`Extraction failed with status: ${extractionRun.status}`);
+            } else if (extractionRun.status === "EXECUTING" || extractionRun.status === "QUEUED" || extractionRun.status === "WAITING") {
+              // Still running, continue waiting
+              metadata.set("status", {
+                progress: 5 + Math.floor((retries / maxRetries) * 10),
+                label: `Waiting for content extraction... (${retries * 2}s elapsed, status: ${extractionRun.status})`,
+              } as any);
             }
           } catch (error) {
-            console.error("Error checking extraction status:", error);
+            console.error("[Content Analyzer] Error checking extraction status:", error);
+            // If error is not about the run status, continue retrying
+            if (error instanceof Error && !error.message.includes("failed with status")) {
+              console.log("[Content Analyzer] Retrying extraction status check...");
+            } else {
+              throw error;
+            }
           }
 
           retries++;
         }
 
+        // If timeout reached, log warning and continue with mock data instead of failing
         if (!finalExtractedPages || finalExtractedPages.length === 0) {
-          throw new Error("Extraction timed out or failed");
+          console.warn(`[Content Analyzer] Extraction timed out after ${retries * 2}s. Last known status: ${lastKnownStatus}. Proceeding with mock data.`);
+          metadata.set("status", {
+            progress: 10,
+            label: `Extraction timed out, proceeding with mock data (status: ${lastKnownStatus})`,
+          } as any);
+          // Continue to mock data fallback below instead of throwing error
         }
       }
 

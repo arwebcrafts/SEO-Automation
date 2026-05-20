@@ -9,12 +9,12 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { OnboardingCheck } from "@/components/auth/OnboardingCheck";
 
 // Clerk requires a publishable key even during build-time SSG.
-// If the real key is not set, use a properly-formatted placeholder so the build doesn't crash.
-// The base64 decodes to "placeholder.clerk.accounts.dev$" — Clerk's expected FAPI format.
-// At runtime with a real key, everything works normally.
+// Use the actual keyless development key from Clerk's local configuration
+// If the env var is set to the placeholder, use the fallback
+const envKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const clerkPubKey =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
-  "pk_test_cGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA==";
+  (envKey && envKey !== "pk_test_REPLACE_WITH_YOUR_KEY" ? envKey : null) ||
+  "pk_test_aGVscGVkLXRhaHItMy5jbGVyay5hY2NvdW50cy5kZXYk";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
