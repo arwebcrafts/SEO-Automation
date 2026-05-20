@@ -291,26 +291,72 @@ export default function DraftSolutionModal({
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <Sparkles className="w-12 h-12 text-blue-600 mx-auto" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Ready to Generate
-                  </h3>
-                  <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-left max-w-md mx-auto">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 dark:text-slate-400">Topic:</span>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{topic}</span>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles className="w-8 h-8 text-blue-600" />
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                      Content Brief
+                    </h3>
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                    Review the content brief below before generating
+                  </p>
+
+                  <div className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 rounded-xl p-6 text-left max-w-lg mx-auto border border-slate-200 dark:border-slate-700">
+                    {/* Topic Section */}
+                    <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Topic</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 dark:text-slate-400">Tone:</span>
-                        <span className="font-medium text-slate-900 dark:text-slate-100 capitalize">{tone}</span>
+                      <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{topic}</p>
+                    </div>
+
+                    {/* Target Persona */}
+                    <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Target Persona</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 dark:text-slate-400">Keywords:</span>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{keywords.length}</span>
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{persona}</p>
+                    </div>
+
+                    {/* Tone */}
+                    <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Settings className="w-4 h-4 text-green-600" />
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Writing Tone</span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 capitalize">{tone}</p>
+                    </div>
+
+                    {/* Keywords */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Target Keywords ({keywords.length})</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {keywords.map((kw, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium"
+                          >
+                            {kw}
+                          </span>
+                        ))}
+                        {keywords.length === 0 && (
+                          <span className="text-sm text-slate-500 dark:text-slate-400 italic">
+                            No keywords specified
+                          </span>
+                        )}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span>AI will generate SEO-optimized content with featured image</span>
                   </div>
                 </div>
               )}

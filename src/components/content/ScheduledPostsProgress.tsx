@@ -189,6 +189,33 @@ export default function ScheduledPostsProgress() {
         </div>
       </div>
 
+      {/* Needs Attention Alert Strip */}
+      {stats.failed > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-900/20 dark:to-amber-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-red-900 dark:text-red-100">
+                  Needs Attention: {stats.failed} Failed Post{stats.failed !== 1 ? 's' : ''}
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  {stats.failed} scheduled post{stats.failed !== 1 ? 's have' : ' has'} failed to publish. Review errors and retry.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setFilter("FAILED")}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+            >
+              View Failed
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filter & Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

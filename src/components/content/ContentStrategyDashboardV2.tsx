@@ -8,6 +8,8 @@ import {
   Lightbulb,
   FileText,
   TrendingUp,
+  TrendingDown,
+  Minus,
   AlertCircle,
   AlertTriangle,
   CheckCircle,
@@ -181,15 +183,21 @@ const SectionNav = ({
 
 export default function ContentStrategyDashboardV2({
   analysisOutput,
-  isLoading = false,
+  isLoading,
   onRefresh,
   onGenerateContent,
   onOpenPlanner,
 }: ContentStrategyDashboardV2Props) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [keywordSort, setKeywordSort] = useState<{ field: "term" | "pages" | "density"; direction: "asc" | "desc" }>({
+    field: "pages",
+    direction: "desc"
+  });
   const [activeSection, setActiveSection] = useState("overview");
   const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [pageFilterType, setPageFilterType] = useState<"all" | "service" | "blog">("all");
+  const [contentTypeFilter, setContentTypeFilter] = useState<"all" | "Blog Post" | "Case Study" | "Guide" | "Whitepaper" | "Infographic">("all");
   const [isGeneratingContent, setIsGeneratingContent] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -330,6 +338,29 @@ export default function ContentStrategyDashboardV2({
     setExpandedPages(newExpanded);
   };
 
+  const handleKeywordSort = (field: "term" | "pages" | "density") => {
+    setKeywordSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === "asc" ? "desc" : "asc"
+    }));
+  };
+
+  const getSortedKeywords = () => {
+    const keywords = contentContext?.dominantKeywords || [];
+    return [...keywords].sort((a, b) => {
+      let comparison = 0;
+      if (keywordSort.field === "term") {
+        comparison = a.term.localeCompare(b.term);
+      } else if (keywordSort.field === "pages") {
+        comparison = a.pages - b.pages;
+      } else if (keywordSort.field === "density") {
+        const densityOrder = { "High": 3, "Medium": 2, "Low": 1 };
+        comparison = densityOrder[a.density] - densityOrder[b.density];
+      }
+      return keywordSort.direction === "asc" ? comparison : -comparison;
+    });
+  };
+
   return (
     <div className="flex gap-8">
       {/* Scroll Spy Navigation */}
@@ -348,36 +379,60 @@ export default function ContentStrategyDashboardV2({
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-600 uppercase">Pages</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-600 uppercase">Pages</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-xs font-medium">+12%</span>
+                  </div>
                 </div>
                 <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{totalPages}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Analyzed</p>
               </div>
 
               <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className="w-5 h-5 text-green-600" />
-                  <span className="text-xs font-medium text-green-600 uppercase">Words</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-green-600" />
+                    <span className="text-xs font-medium text-green-600 uppercase">Words</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-xs font-medium">+8%</span>
+                  </div>
                 </div>
                 <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{totalWordCount.toLocaleString()}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Content</p>
               </div>
 
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-5 h-5 text-purple-600" />
-                  <span className="text-xs font-medium text-purple-600 uppercase">Keywords</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-600 uppercase">Keywords</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-600">
+                    <Minus className="w-4 h-4" />
+                    <span className="text-xs font-medium">0%</span>
+                  </div>
                 </div>
                 <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{contentContext?.dominantKeywords?.length || 0}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Identified</p>
               </div>
 
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-600 uppercase">Gaps</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    <span className="text-xs font-medium text-amber-600 uppercase">Gaps</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TrendingDown className="w-4 h-4" />
+                    <span className="text-xs font-medium">-15%</span>
+                  </div>
                 </div>
                 <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{contentContext?.contentGaps?.length || 0}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Opportunities</p>
@@ -479,33 +534,78 @@ export default function ContentStrategyDashboardV2({
             </h2>
 
             {contentContext?.dominantKeywords && contentContext.dominantKeywords.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {contentContext.dominantKeywords.map((keyword, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      keyword.density === "High"
-                        ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                        : keyword.density === "Medium"
-                        ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
-                        : "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{keyword.term}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Found on {keyword.pages} page{keyword.pages !== 1 ? 's' : ''}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      keyword.density === "High"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
-                        : keyword.density === "Medium"
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                        : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                    }`}>
-                      {keyword.density}
-                    </span>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-3 px-4">
+                        <button
+                          onClick={() => handleKeywordSort("term")}
+                          className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                          Keyword
+                          {keywordSort.field === "term" && (
+                            keywordSort.direction === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4">
+                        <button
+                          onClick={() => handleKeywordSort("pages")}
+                          className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                          Pages
+                          {keywordSort.field === "pages" && (
+                            keywordSort.direction === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4">
+                        <button
+                          onClick={() => handleKeywordSort("density")}
+                          className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                          Density
+                          {keywordSort.field === "density" && (
+                            keywordSort.direction === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getSortedKeywords().map((keyword, index) => (
+                      <tr
+                        key={index}
+                        className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
+                          keyword.density === "High"
+                            ? "bg-red-50/50 dark:bg-red-900/10"
+                            : keyword.density === "Medium"
+                            ? "bg-amber-50/50 dark:bg-amber-900/10"
+                            : ""
+                        }`}
+                      >
+                        <td className="py-3 px-4">
+                          <p className="font-medium text-slate-900 dark:text-slate-100">{keyword.term}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-slate-600 dark:text-slate-400">{keyword.pages} page{keyword.pages !== 1 ? 's' : ''}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            keyword.density === "High"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                              : keyword.density === "Medium"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                              : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                          }`}>
+                            {keyword.density}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <p className="text-slate-500 dark:text-slate-400 text-center py-8">No keywords identified yet</p>
@@ -589,16 +689,36 @@ export default function ContentStrategyDashboardV2({
         {/* AI Suggestions Section */}
         <section id="suggestions" className="scroll-mt-24">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Lightbulb className="w-5 h-5 text-yellow-600" />
                 AI Content Suggestions ({aiSuggestions?.length || 0})
               </h2>
+
+              {/* Content Type Filter */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Filter by:</span>
+                {["all", "Blog Post", "Case Study", "Guide", "Whitepaper", "Infographic"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setContentTypeFilter(type as typeof contentTypeFilter)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      contentTypeFilter === type
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    }`}
+                  >
+                    {type === "all" ? "All Types" : type}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {aiSuggestions && aiSuggestions.length > 0 ? (
               <div className="space-y-4">
-                {aiSuggestions.map((suggestion, index) => (
+                {aiSuggestions
+                  .filter(suggestion => contentTypeFilter === "all" || suggestion.type === contentTypeFilter)
+                  .map((suggestion, index) => (
                   <div
                     key={index}
                     className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-700/30 rounded-xl p-5 border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all"

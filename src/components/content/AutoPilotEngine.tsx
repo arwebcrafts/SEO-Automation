@@ -96,6 +96,7 @@ export default function AutoPilotEngine() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showWpConnectModal, setShowWpConnectModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [wpConnectMode, setWpConnectMode] = useState<"auto" | "manual">("auto");
   const [wpUrl, setWpUrl] = useState("");
   const [wpApiKey, setWpApiKey] = useState("");
@@ -570,6 +571,16 @@ export default function AutoPilotEngine() {
   };
 
   const handleGenerateAllContent = async () => {
+    const selectedTopics = generatedTopics.filter(t => t.selected);
+    if (selectedTopics.length === 0) {
+      alert("Please select at least one topic to generate content for.");
+      return;
+    }
+    setShowPreviewModal(true);
+  };
+
+  const confirmGenerateContent = async () => {
+    setShowPreviewModal(false);
     setIsGeneratingContent(true);
     const selectedTopics = generatedTopics.filter(t => t.selected);
     
@@ -841,6 +852,17 @@ export default function AutoPilotEngine() {
     return !!(siteUrl && apiKey);
   };
 
+  // Get WordPress connection details
+  const getWordPressConnection = () => {
+    const wpConnection = localStorage.getItem('wp_connection_global');
+    if (!wpConnection) return null;
+    try {
+      return JSON.parse(wpConnection);
+    } catch {
+      return null;
+    }
+  };
+
   const handleSaveAllScheduled = async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -889,30 +911,76 @@ export default function AutoPilotEngine() {
 
   return (
     <div className="min-h-screen">
-      {/* WordPress Connection Warning */}
-      {!isWordPressConnected() && (
-        <div className="max-w-4xl mx-auto mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-medium text-amber-800 dark:text-amber-200">WordPress Not Connected</h4>
-              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                Connect your WordPress site to publish content directly. Download the SEO AutoFix plugin and connect.
-              </p>
-              <div className="flex items-center gap-3 mt-3">
+      {/* WordPress Connection Status Banner */}
+      {isWordPressConnected() ? (
+        <div className="w-full bg-gradient-to-r from-green-500 to-green-600 dark:from-green-900/50 dark:to-green-800/50 border-b-4 border-green-600 dark:border-green-700">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white dark:text-green-100">
+                    WordPress Connected: {getWordPressConnection()?.siteName || getWordPressConnection()?.siteUrl}
+                  </h3>
+                  <p className="text-xs text-green-100 dark:text-green-200 mt-0.5">
+                    Ready to publish content directly to your site
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowWpConnectModal(true)}
+                className="text-xs text-white dark:text-green-100 hover:text-green-50 dark:hover:text-green-50 underline"
+              >
+                Manage Connection
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-900/50 dark:to-amber-800/50 border-b-4 border-amber-600 dark:border-amber-700">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg">
+                  <Plug className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white dark:text-amber-100">WordPress Not Connected</h3>
+                  <p className="text-amber-100 dark:text-amber-200 mt-1 max-w-xl">
+                    Connect your WordPress site to automatically publish AI-generated content. Follow these 3 steps:
+                  </p>
+                  <ol className="mt-3 space-y-2 text-sm text-amber-100 dark:text-amber-200">
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <span>Download the SEO AutoFix plugin below</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <span>Upload and activate the plugin in WordPress (Plugins → Add New → Upload)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                      <span>Click "Connect WordPress" and authorize the connection</span>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
                 <a
                   href="/downloads/seo-auto-fix.zip"
                   download
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors font-semibold shadow-lg"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-5 h-5" />
                   Download Plugin
                 </a>
                 <button
                   onClick={() => setShowWpConnectModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-sm font-medium"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-semibold shadow-lg"
                 >
-                  <Plug className="w-4 h-4" />
+                  <Plug className="w-5 h-5" />
                   Connect WordPress
                 </button>
               </div>
@@ -1734,6 +1802,130 @@ export default function AutoPilotEngine() {
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${content.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : content.status === "published" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : content.status === "completed" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" : "bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-300"}`}>{content.status}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preview Modal */}
+        {showPreviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowPreviewModal(false)}
+            />
+            <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                      Auto-Pilot Run Preview
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Review the content generation plan before starting
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <p className="text-2xl font-bold text-blue-600">{generatedTopics.filter(t => t.selected).length}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Topics to Generate</p>
+                  </div>
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                    <p className="text-2xl font-bold text-green-600">{postsPerDay}x/day</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Posting Frequency</p>
+                  </div>
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <p className="text-2xl font-bold text-purple-600">{selectedLocations.length || 1}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Target Locations</p>
+                  </div>
+                </div>
+
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Content to be Generated:</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-100">Topic</th>
+                        <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-100">Type</th>
+                        <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-100">Date</th>
+                        <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-100">Keywords</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {generatedTopics.filter(t => t.selected).map((topic, index) => (
+                        <tr key={topic.id} className="border-b border-slate-100 dark:border-slate-800">
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{topic.title}</p>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium capitalize">
+                              {topic.contentType}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
+                            {topic.scheduledDate.toLocaleDateString()} at {topic.scheduledTime}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {topic.primaryKeywords.slice(0, 3).map((kw, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-700 dark:text-slate-300">
+                                  {kw}
+                                </span>
+                              ))}
+                              {topic.primaryKeywords.length > 3 && (
+                                <span className="text-xs text-slate-500">+{topic.primaryKeywords.length - 3}</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">Before You Start</p>
+                      <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1">
+                        <li>• AI will generate {generatedTopics.filter(t => t.selected).length} pieces of content with featured images</li>
+                        <li>• Each piece will be SEO-optimized with target keywords</li>
+                        <li>• Content can be reviewed and edited before publishing</li>
+                        <li>• Estimated time: ~{Math.ceil(generatedTopics.filter(t => t.selected).length * 2)} minutes</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-6 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmGenerateContent}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  <Play className="w-4 h-4" />
+                  Start Generation
+                </button>
               </div>
             </div>
           </div>

@@ -23,6 +23,7 @@ import DraftSolutionModal from "@/components/content/DraftSolutionModal";
 import StrategyHeader from "@/components/content/StrategyHeader";
 import WordPressPublishHistory from "@/components/content/WordPressPublishHistory";
 import { StrategySidebarNav } from "@/components/content/StrategySidebarNav";
+import ContentStrategyTabs from "@/components/content/ContentStrategyTabs";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/Toast";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
@@ -1131,9 +1132,9 @@ export default function ContentStrategyPage() {
       )}
 
       <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
           {/* Page Header */}
-          <div className="mb-8 text-center">
+          <div className="px-4 py-8 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full mb-4">
               <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
@@ -1153,14 +1154,20 @@ export default function ContentStrategyPage() {
               {activeView === "progress" && "Scheduled Posts Progress"}
             </h1>
             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              {analysisOutput 
+              {analysisOutput
                 ? "Manage your AI-powered content strategy and generate high-quality content with featured images"
                 : "Transform your website content with AI-powered analysis and intelligent recommendations"
               }
             </p>
           </div>
 
-          {renderContent()}
+          {/* View Navigation Tabs */}
+          <ContentStrategyTabs activeView={activeView} onViewChange={handleViewChange} />
+
+          {/* Content Area */}
+          <div className="px-4 py-8">
+            {renderContent()}
+          </div>
         </div>
       </div>
 
