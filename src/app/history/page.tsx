@@ -2,24 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { Header } from "@/components/shared/header";
-import { Footer } from "@/components/shared/footer";
 import { 
   FileText, 
   Calendar, 
-  TrendingUp, 
   CheckCircle2, 
   Clock,
   ExternalLink,
-  Search,
-  Filter,
   BarChart3,
-  Activity
+  Activity,
+  FileSearch,
+  Database,
+  Search
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
 import SidebarLayout from "@/components/layout/SidebarLayout";
+import { FilterToolbar } from "@/components/history/FilterToolbar";
 
 interface Audit {
   id: string;
@@ -38,6 +37,8 @@ interface ContentAnalysis {
   domain: string;
   status: string;
   pagesAnalyzed: number;
+  gapsFound?: number;
+  topics?: number;
   createdAt: string;
   completedAt: string | null;
 }
@@ -52,6 +53,8 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [loadingAnalysisId, setLoadingAnalysisId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
   
   // Get initial tab from URL parameter
   const tabParam = searchParams.get('tab');
@@ -103,6 +106,13 @@ export default function HistoryPage() {
     ? filteredAudits 
     : filteredContent;
 
+  // Pagination logic
+  const totalPages = Math.ceil(allItems.length / itemsPerPage);
+  const paginatedItems = allItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const completedAudits = audits.filter(a => a.status === "COMPLETED").length;
   const runningAudits = audits.filter(a => a.status === "RUNNING").length;
   const completedContent = contentAnalyses.filter(a => a.status === "COMPLETED").length;
@@ -142,10 +152,10 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <SidebarLayout onNewStrategy={handleNewStrategy}>
+      <SidebarLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
             <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">Loading history...</p>
           </div>
         </div>
@@ -154,64 +164,21 @@ export default function HistoryPage() {
   }
 
   return (
-    <SidebarLayout onNewStrategy={handleNewStrategy}>
+    <SidebarLayout>
       <div className="min-h-screen">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-              Your History
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              History
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
               View all your SEO audits and content strategy analyses
             </p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Audits</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{audits.length}</p>
-                </div>
-                <FileText className="w-10 h-10 text-blue-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Content Analyses</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{contentAnalyses.length}</p>
-                </div>
-                <BarChart3 className="w-10 h-10 text-purple-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Completed</p>
-                  <p className="text-3xl font-bold text-green-600">{completedAudits + completedContent}</p>
-                </div>
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">In Progress</p>
-                  <p className="text-3xl font-bold text-amber-600">{runningAudits + runningContent}</p>
-                </div>
-                <Clock className="w-10 h-10 text-amber-500" />
-              </div>
-            </div>
-          </div>
-
           {/* Tab Navigation */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 mb-6">
             <div className="flex border-b border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => {
@@ -220,19 +187,18 @@ export default function HistoryPage() {
                 }}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors relative ${
                   filterType === "all"
-                    ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  <span>All History</span>
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-600">
+                  <span>All</span>
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300">
                     {audits.length + contentAnalyses.length}
                   </span>
                 </div>
                 {filterType === "all" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
                 )}
               </button>
               <button
@@ -242,19 +208,18 @@ export default function HistoryPage() {
                 }}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors relative ${
                   filterType === "audits"
-                    ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <FileText className="w-4 h-4" />
                   <span>SEO Audits</span>
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300">
                     {audits.length}
                   </span>
                 </div>
                 {filterType === "audits" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
                 )}
               </button>
               <button
@@ -264,35 +229,29 @@ export default function HistoryPage() {
                 }}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors relative ${
                   filterType === "content"
-                    ? "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20"
+                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
                   <span>Content Strategy</span>
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400">
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300">
                     {contentAnalyses.length}
                   </span>
                 </div>
                 {filterType === "content" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
                 )}
               </button>
             </div>
             
-            {/* Search Bar */}
-            <div className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by domain or URL..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-100"
-                />
-              </div>
+            {/* Filter Toolbar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+              <FilterToolbar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onExport={() => console.log("Export clicked")}
+              />
             </div>
           </div>
 
@@ -305,60 +264,97 @@ export default function HistoryPage() {
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                       SEO Audits
                     </h2>
-                    <div className="space-y-3">
-                      {filteredAudits.map((audit) => (
-                        <Link
-                          key={audit.id}
-                          href={`/${audit.domain}?id=${audit.id}`}
-                          className="block bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <FileText className="w-5 h-5 text-blue-500" />
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                  {audit.domain}
-                                </h3>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                          <tr>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Domain
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              URL
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Score
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Grade
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="text-right px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                          {filteredAudits.map((audit) => (
+                            <tr
+                              key={audit.id}
+                              className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            >
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="w-4 h-4 text-indigo-600" />
+                                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                                    {audit.domain}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                                {audit.url}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {audit.overallScore ?? "--"}
+                              </td>
+                              <td className="px-6 py-4">
                                 {audit.overallGrade && (
                                   <span
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
                                       audit.overallGrade === "A"
-                                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                         : audit.overallGrade === "B"
                                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                                         : audit.overallGrade === "C"
-                                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-                                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
                                     }`}
                                   >
-                                    Grade: {audit.overallGrade}
+                                    {audit.overallGrade}
                                   </span>
                                 )}
-                              </div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{audit.url}</p>
-                              <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" />
-                                  {new Date(audit.createdAt).toLocaleDateString()}
-                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {new Date(audit.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4">
                                 {audit.completedAt && (
-                                  <div className="flex items-center gap-1">
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-medium">
                                     Completed
-                                  </div>
+                                  </span>
                                 )}
                                 {audit.status === "RUNNING" && (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4 text-amber-500" />
+                                  <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium">
                                     In Progress
-                                  </div>
+                                  </span>
                                 )}
-                              </div>
-                            </div>
-                            <ExternalLink className="w-5 h-5 text-slate-400" />
-                          </div>
-                        </Link>
-                      ))}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <Link
+                                  href={`/${audit.domain}?id=${audit.id}`}
+                                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-sm font-medium"
+                                >
+                                  View
+                                </Link>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -372,68 +368,86 @@ export default function HistoryPage() {
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                       Content Strategy Analyses
                     </h2>
-                    <div className="space-y-3">
-                      {filteredContent.map((analysis) => (
-                        <div
-                          key={analysis.id}
-                          className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <BarChart3 className="w-5 h-5 text-purple-500" />
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                  {analysis.domain}
-                                </h3>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                          <tr>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Domain
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Pages Analyzed
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Gaps Found
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Topics
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="text-right px-6 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                          {filteredContent.map((analysis) => (
+                            <tr
+                              key={analysis.id}
+                              className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            >
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <BarChart3 className="w-4 h-4 text-indigo-600" />
+                                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                                    {analysis.domain}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {analysis.pagesAnalyzed}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {analysis.gapsFound ?? 0}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {analysis.topics ?? 0}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                {new Date(analysis.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4">
                                 {analysis.status === "COMPLETED" && (
-                                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
-                                    Ready to Load
+                                  <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-medium">
+                                    Completed
                                   </span>
                                 )}
-                              </div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{analysis.baseUrl}</p>
-                              <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-                                <div className="flex items-center gap-1">
-                                  <Activity className="w-4 h-4" />
-                                  {analysis.pagesAnalyzed} pages analyzed
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" />
-                                  {new Date(analysis.createdAt).toLocaleDateString()}
-                                </div>
-                                {analysis.completedAt && (
-                                  <div className="flex items-center gap-1">
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                    Completed
-                                  </div>
-                                )}
                                 {analysis.status === "RUNNING" && (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4 text-amber-500" />
+                                  <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium">
                                     In Progress
-                                  </div>
+                                  </span>
                                 )}
-                              </div>
-                            </div>
-                            {analysis.status === "COMPLETED" && (
-                              <button
-                                onClick={() => handleLoadAnalysis(analysis.id)}
-                                disabled={loadingAnalysisId === analysis.id}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-                              >
-                                {loadingAnalysisId === analysis.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Loading...
-                                  </>
-                                ) : (
-                                  'Load Strategy'
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {analysis.status === "COMPLETED" && (
+                                  <button
+                                    onClick={() => handleLoadAnalysis(analysis.id)}
+                                    disabled={loadingAnalysisId === analysis.id}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                  >
+                                    {loadingAnalysisId === analysis.id ? "Loading..." : "Load"}
+                                  </button>
                                 )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -442,22 +456,118 @@ export default function HistoryPage() {
 
             {allItems.length === 0 && (
               <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  No history found
-                </h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  Start running audits or content analyses to see them here
-                </p>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Start New Audit
-                </Link>
+                {filterType === "audits" ? (
+                  <>
+                    <FileSearch className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                      No audits yet
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">
+                      Run your first SEO audit to see your history here
+                    </p>
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Run an Audit
+                    </Link>
+                  </>
+                ) : filterType === "content" ? (
+                  <>
+                    <Database className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                      No content strategy analyses yet
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">
+                      Analyze your website to discover content gaps and AI-powered suggestions
+                    </p>
+                    <Link
+                      href="/content-strategy?view=analysis"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Start Analysis
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <FileSearch className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                      No history yet
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">
+                      Start running audits or content analyses to see them here
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                      <Link
+                        href="/dashboard"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Run an Audit
+                      </Link>
+                      <Link
+                        href="/content-strategy?view=analysis"
+                        className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Analyze Content
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allItems.length)} of {allItems.length} items
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                          currentPage === pageNum
+                            ? "bg-indigo-600 text-white"
+                            : "border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </SidebarLayout>

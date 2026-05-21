@@ -32,7 +32,8 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import SearchResultPreview from "./SearchResultPreview";
-import LocationSelector from "./LocationSelector";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { Alert } from "@/components/ui/Alert";
 
 interface DiscoveryData {
   services: string[];
@@ -895,9 +896,9 @@ Return ONLY the JSON object, no other text.`,
             </div>
 
             {wpConnectError && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-700 dark:text-red-300">{wpConnectError}</p>
-              </div>
+              <Alert variant="error" className="mb-4">
+                {wpConnectError}
+              </Alert>
             )}
 
             {handshakeStatus === "pending" && (
@@ -1079,9 +1080,9 @@ Return ONLY the JSON object, no other text.`,
 
               {/* Error Message */}
               {error && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                </div>
+                <Alert variant="error">
+                  {error}
+                </Alert>
               )}
 
               {/* Auto Step Actions */}
@@ -1350,9 +1351,9 @@ Return ONLY the JSON object, no other text.`,
 
               {/* Error Message */}
               {error && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                </div>
+                <Alert variant="error">
+                  {error}
+                </Alert>
               )}
 
               {/* Generation Method Toggle */}

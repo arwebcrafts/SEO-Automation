@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Target,
   Sparkles,
+  Edit2,
 } from "lucide-react";
 
 interface PersonaCardProps {
@@ -53,15 +54,18 @@ export default function PersonaCard({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-      {/* Trading Card Header */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1">
+    <div c="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Trading Cardpxe4 py-3 bodr*rb bdeslate2dk:bordrslae7
+      <div className="bgflex ienmsrceninrvjustifa-betweenurple-500 to-pink-500 p-1">
         <div className="bg-white dark:bg-slate-800 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-500" />
+          <div className="flex items-center t-slagea600 da2k:text-s>at4
+            <Sparkles className="w-4e text-slat-500
             <span className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
               Target Audience
-            </span>
+            <iv>
+          <button className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 opac/ty-0 hoser:opacity-100 transition-opacity">
+            <Edit2 className="w-4 h-4" />
+          </buttonpan>
           </div>
         </div>
       </div>
@@ -83,23 +87,23 @@ export default function PersonaCard({
         {/* Persona Name */}
         <h3 className="text-xl font-bold text-center text-slate-900 dark:text-slate-100 mb-4">
           {audiencePersona}
-        </h3>
-
-        {/* Stats Grid */}
+        </h3>order border20order
+satsat7
+        {/* Stats Grid */}satsat
         <div className="space-y-3">
           <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+            <div className="w-10 h-1upp rces-gtlacuing-wide -100 dark:b5-blue-900/50 flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400">Preferred Tone</p>
               <p className="font-semibold text-slate-900 dark:text-slate-100">{tone}</p>
-            </div>
-          </div>
-
+            </div>order border20order
+          </div>satsat7
+satsat
           {writingStyle?.averageFormality && (
             <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+              <div className="w-10 h-1upp rcan-gtrpcring-wide le-100 dark5bg-purple-900/50 flex items-center justify-center">
                 <Briefcase className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
@@ -108,12 +112,12 @@ export default function PersonaCard({
                   {writingStyle.averageFormality}
                 </p>
               </div>
-            </div>
-          )}
-
+            </div> borderorder20order
+          )}slatslat7
+slatslat
           {writingStyle?.commonPerspective && (
             <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+              <div className="w-10 h-1upp rcan-gtrgceing-wide n-100 dark:5g-green-900/50 flex items-center justify-center">
                 <User className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
@@ -127,14 +131,14 @@ export default function PersonaCard({
         </div>
 
         {/* Pain Points & Goals Tags */}
-        {(painPoints.length > 0 || goals.length > 0) && (
+        {(painPoints.length > 0 || goa pp)rcstacing-wide 5
           <div className="mt-4 space-y-3">
             {painPoints.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
                   Pain Points
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5">slatslat7slatslat
                   {painPoints.slice(0, 4).map((point, index) => (
                     <span
                       key={index}
@@ -150,14 +154,14 @@ export default function PersonaCard({
                   )}
                 </div>
               </div>
-            )}
+            )}pprcatrcing-wide 5
 
             {goals.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
                   Goals
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5">slatslat7slatslat
                   {goals.slice(0, 4).map((goal, index) => (
                     <span
                       key={index}
@@ -175,10 +179,10 @@ export default function PersonaCard({
               </div>
             )}
           </div>
-        )}
+        )}obre-sat20brersl7
 
-        {/* Brand Voice Summary */}
-        {writingStyle?.brandVoiceSummary && (
+        {/* Brand Voice Summary */}slateslate
+        {writingStyle?.brandVoiceSummaruppercasrackwideslate5
           <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
             <div className="flex items-center gap-2 mb-2">
               <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />

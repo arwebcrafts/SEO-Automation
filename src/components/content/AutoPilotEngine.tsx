@@ -7,6 +7,8 @@ import {
   Zap, Settings, Play, ExternalLink, Save, Globe, BarChart3, Image as ImageIcon,
   Download, AlertCircle, Plug, XCircle,
 } from "lucide-react";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { Alert } from "@/components/ui/Alert";
 import LocationSelector from "./LocationSelector";
 
 interface AnalysisData {
@@ -939,54 +941,33 @@ export default function AutoPilotEngine() {
           </div>
         </div>
       ) : (
-        <div className="w-full bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-900/50 dark:to-amber-800/50 border-b-4 border-amber-600 dark:border-amber-700">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg">
-                  <Plug className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white dark:text-amber-100">WordPress Not Connected</h3>
-                  <p className="text-amber-100 dark:text-amber-200 mt-1 max-w-xl">
-                    Connect your WordPress site to automatically publish AI-generated content. Follow these 3 steps:
-                  </p>
-                  <ol className="mt-3 space-y-2 text-sm text-amber-100 dark:text-amber-200">
-                    <li className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                      <span>Download the SEO AutoFix plugin below</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                      <span>Upload and activate the plugin in WordPress (Plugins → Add New → Upload)</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 bg-white/20 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                      <span>Click "Connect WordPress" and authorize the connection</span>
-                    </li>
-                  </ol>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-                <a
-                  href="/downloads/seo-auto-fix.zip"
-                  download
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors font-semibold shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  Download Plugin
-                </a>
-                <button
-                  onClick={() => setShowWpConnectModal(true)}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-semibold shadow-lg"
-                >
-                  <Plug className="w-5 h-5" />
-                  Connect WordPress
-                </button>
-              </div>
+        <Alert variant="warning" title="WordPress Not Connected" className="mb-6">
+          <div className="mt-3">
+            <p className="mb-3">Connect your WordPress site to automatically publish AI-generated content. Follow these steps:</p>
+            <ol className="space-y-2 list-decimal list-inside">
+              <li>Download the SEO AutoFix plugin below</li>
+              <li>Upload and activate the plugin in WordPress (Plugins → Add New → Upload)</li>
+              <li>Click "Connect WordPress" and authorize the connection</li>
+            </ol>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <a
+                href="/downloads/seo-auto-fix.zip"
+                download
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Download Plugin
+              </a>
+              <button
+                onClick={() => setShowWpConnectModal(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-medium"
+              >
+                <Plug className="w-4 h-4" />
+                Connect WordPress
+              </button>
             </div>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* WordPress Connection Modal */}

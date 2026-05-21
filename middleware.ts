@@ -23,6 +23,15 @@ export default clerkMiddleware((auth, request) => {
   if (isPublicRoute(request)) {
     return;
   }
+  
+  // Redirect authenticated users from root to dashboard
+  if (request.nextUrl.pathname === "/") {
+    const userId = auth().userId;
+    if (userId) {
+      return Response.redirect(new URL("/dashboard", request.url));
+    }
+  }
+  
   auth.protect();
 });
 

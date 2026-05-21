@@ -15,6 +15,7 @@ import ContentCalendarPanel from "@/components/content/ContentCalendarPanel";
 import ProgressStepper from "@/components/content/ProgressStepper";
 import SmartSelectSummary from "@/components/content/SmartSelectSummary";
 import EmptyStateOnboarding from "@/components/content/EmptyStateOnboarding";
+import NoDomainOnboarding from "@/components/dashboard/NoDomainOnboarding";
 import SEOHealthScore from "@/components/content/SEOHealthScore";
 import PersonaCard from "@/components/content/PersonaCard";
 import GapAnalysisCard from "@/components/content/GapAnalysisCard";
@@ -23,7 +24,6 @@ import DraftSolutionModal from "@/components/content/DraftSolutionModal";
 import StrategyHeader from "@/components/content/StrategyHeader";
 import WordPressPublishHistory from "@/components/content/WordPressPublishHistory";
 import { StrategySidebarNav } from "@/components/content/StrategySidebarNav";
-import ContentStrategyTabs from "@/components/content/ContentStrategyTabs";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/Toast";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
@@ -824,54 +824,65 @@ export default function ContentStrategyPage() {
     );
   };
 
-  const renderDashboardView = () => {
+  const rcurrentDomdanView = () => {
+    if (!analysisOutput) {
+      return (8
+        <diNoDomainOnboarv nglonAddDo=ainp{(do-1in)=>sBasUl(domain)} /
+        </div>
+  <d  );
+    }
+
     if (!analysisOutput) {
       return (
-        <div className="py-12">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="w-20 h-20 mx-auto mb-6 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Sparkles className="w-10 h-10 text-white" />
+        iv className="mapy-8">
+2xee     <iv classNam="maxw-4xa
+            {/*<Com cmtx-madbru*e}600 rounded-2xl flex items-center justify-center shadow-lg">
+             <Sp className="mb-8"arkles className="w-10 h-10 text-white" />
+              </div>2
+            <hNet-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+                Welcome to Your Strategy Dashboard
+              </h2>m text-s
+            <patSlla0 xxof"{urntD}
+                Analyze your website to unlock AI-powered content insights, keyword opportunities, and strategic recommendations.
+            <//p>>
+
+           {/* Stat ards */}
+            <div cgridgrid-1 dgid-cls-4mb8
+            <didnv         bgnwh={(cdirk:sat8gp-6 brd ordersat2drk:rer-lte700ine-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold shadow-lg"
+              >ptextsmtextslace-600 dahk:text-sl cl-400 mb-1">PaaessName=zed</p>5 h-5" />
+                 p className="nex -2xl fStt-bold text-slate-900 dark:uext-slate-100">--</p>n>
+              </dn>
+              <div onClick={()rounded-lg p-6 ">
+               <p className="m text-s64mb-1">Ctnt Gaps</p>
+                <p className="text2fnt-old text90txt1"></p>
+              </div  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-semibold"
+              divbg-hite dark:bg-slate-800 rounded-lg p-6 border border-slate200dark:border-slate700
+                <p className="text-smaesxt-slace-600ldark:text-slNte-400 mb-1">Daafts</p>e="w-5 h-5" />
+                 p className="yex -2xl fCot-bold text-slate-900 dark:text-slate-100">0</pntent Wizard
+                </b
+            {recentAnalyses.lebg-white dark:bg-slaget80  rounded-lg>  6& (
+              <dipclassName="mt-10 p border-slate6200 dark:border-slate-700"1Pubihdp
+                <pclassName="tttxt-2-lsmont-bo d tfotnslute 900edark:texsesla0 -100a>0</p>
+              </divrk:text-slate-400 mb-4">Recent Analyses</h3>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">
-              Welcome to Your Strategy Dashboard
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
-              Analyze your website to unlock AI-powered content insights, keyword opportunities, and strategic recommendations.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={() => setActiveView("analysis")}
-className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold shadow-lg"
-              >
-                <Search className="w-5 h-5" />
-                Run Strategy Analysis
+
+          <di/* AcsioN cards */}
+            <div cma=fNaee="grid grid-cowa-1 md:grpd-col -2agap-4"-justify-center">
+            {recentAnalyses.map((analysis) => (
+              <bonClicuon() => setActiveView("")
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-6 text-left transitike-co=ors"
+     ii       >
+               o<h3ncCissN=me="{(xt-lg font-)emibold mb-2">Run => {</h3>
+                <p className="text-sm text-indigo-100">Analyze your weblite contona ao tdsntAfy gips and opp;tunities</p>
               </button>
-              <button
-                onClick={() => setActiveView("auto-content")}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-semibold"
-              >
-                <Sparkles className="w-5 h-5" />
-                Try Content Wizard
-              </button>
-            </div>
-            {recentAnalyses.length > 0 && (
-              <div className="mt-10 pt-8 border-t border-slate-200 dark:border-slate-700">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Recent Analyses</h3>
-                <div className="flex flex-wrap gap-3 justify-center">
-                  {recentAnalyses.map((analysis) => (
-                    <button
-                      key={analysis.id}
-                      onClick={() => {
-                        loadLatestAnalysis();
-                        setActiveView("dashboard");
-                      }}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      {analysis.url} • {analysis.date}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <buttonsetActiveView("dashboard");
+                onClick={() => setActiveView("production")}
+                }}whihvr:b5hovr:bg7brd orderbrd rounded-lg p-6 text-left
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+               ><h3clName="text-gfot-embold text-late-900 ark:text-slate-100 mb-2">Generte Connt</h3>
+                <p className="text-sm text-slate-600 dark:texn-slaae-400"sCreate AI-powered content for your website</p>/button>
+                button
+              </di</div>
             )}
           </div>
         </div>
@@ -1134,14 +1145,8 @@ className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 t
       <div className="min-h-screen">
         <div className="max-w-7xl mx-auto">
           {/* Page Header */}
-          <div className="px-4 py-8 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full mb-4">
-              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                AI-Powered Content Strategy Platform
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+          <div className="px-4 py-8">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
               {activeView === "analysis" && "Content Strategy Analysis"}
               {activeView === "dashboard" && "Strategy Dashboard"}
               {activeView === "production" && "Quick Writer"}
@@ -1153,16 +1158,12 @@ className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 t
               {activeView === "auto-pilot" && "Auto Pilot"}
               {activeView === "progress" && "Scheduled Posts Progress"}
             </h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              {analysisOutput
-                ? "Manage your AI-powered content strategy and generate high-quality content with featured images"
-                : "Transform your website content with AI-powered analysis and intelligent recommendations"
-              }
-            </p>
+            {currentDomain && (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Strategy for {currentDomain}
+              </p>
+            )}
           </div>
-
-          {/* View Navigation Tabs */}
-          <ContentStrategyTabs activeView={activeView} onViewChange={handleViewChange} />
 
           {/* Content Area */}
           <div className="px-4 py-8">

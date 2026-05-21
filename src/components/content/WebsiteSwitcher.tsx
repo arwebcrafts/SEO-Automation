@@ -12,6 +12,7 @@ import {
   ChevronDown,
   X,
   AlertCircle,
+  Search,
 } from "lucide-react";
 
 interface Website {
@@ -49,6 +50,24 @@ export default function WebsiteSwitcher({
   const [newApiKey, setNewApiKey] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter websites based on search query
+  const filteredWebsites = websites.filter(
+    (website) =>
+      website.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      website.siteUrl.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Get favicon URL from website URL
+  const getFaviconUrl = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -165,6 +184,20 @@ export default function WebsiteSwitcher({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[50vh]">
+          {/* Search Input */}
+          {!showAddForm && (
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search websites..."
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -182,19 +215,32 @@ export default function WebsiteSwitcher({
             </div>
           ) : (
             <div className="space-y-3">
-              {websites.map((website) => (
-                <div
-                  key={website.id}
-                  onClick={() => onWebsiteSelect(website)}
-                  className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    currentWebsiteId === website.id
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                  }`}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <Globe className="w-6 h-6 text-white" />
-                  </div>
+              {filteredWebsites.map((website) => {
+                const faviconUrl = getFaviconUrl(website.siteUrl);
+                return (
+                  <div
+                    key={website.id}
+                    onClick={() => onWebsiteSelect(website)}
+                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      currentWebsiteId === website.id
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                    }`}
+                  >
+                    {faviconUrl ? (
+                      <img
+                        src={faviconUrl}
+                        alt=""
+                        className="w-12 h-12 rounded-xl flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <Globe className="w-6 h-6 text-white" />
+                    </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
@@ -233,9 +279,10 @@ export default function WebsiteSwitcher({
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
-              {websites.length === 0 && !showAddForm && (
+              {filteredWebsites.length === 0 && !showAddForm && (
                 <div className="text-center py-8">
                   <Globe className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
