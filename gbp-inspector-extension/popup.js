@@ -78,6 +78,13 @@ document.addEventListener('click', (e) => {
     openGoogleMaps();
   } else if (buttonText.includes('Try Again')) {
     checkCurrentTab();
+  } else if (buttonText === 'Copy') {
+    const copyType = button.getAttribute('data-copy');
+    if (copyType === 'placeid' && businessData.placeId) {
+      copyToClipboard(businessData.placeId, button);
+    } else if (copyType === 'cid' && businessData.cid) {
+      copyToClipboard(businessData.cid, button);
+    }
   }
 });
 
@@ -547,6 +554,25 @@ function generateReviewLink() {
     console.error('Failed to copy:', err);
     // Fallback: open the link directly
     chrome.tabs.create({ url: reviewLink });
+  });
+}
+
+// Copy to clipboard with visual feedback
+function copyToClipboard(text, button) {
+  navigator.clipboard.writeText(text).then(() => {
+    const originalText = button.textContent;
+    button.textContent = '✓';
+    button.style.background = '#dcfce7';
+    button.style.color = '#16a34a';
+    
+    setTimeout(() => {
+      button.textContent = originalText;
+      button.style.background = '#e0e7ff';
+      button.style.color = '#667eea';
+    }, 1500);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    alert('Failed to copy to clipboard');
   });
 }
 

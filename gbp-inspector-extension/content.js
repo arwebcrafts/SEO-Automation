@@ -218,16 +218,31 @@ function extractBusinessData() {
       }
     }
     
-    // Extract Place ID from URL
-    const urlMatch = window.location.href.match(/!1s([a-zA-Z0-9_-]+)/);
-    if (urlMatch) {
-      data.placeId = urlMatch[1];
+    // Extract Place ID and CID
+    let placeId = null;
+    let cid = null;
+    
+    // Pattern 1: Find ChIJ Place ID in the page HTML (most reliable)
+    const html = document.documentElement.innerHTML;
+    const chijMatch = html.match(/ChIJ[a-zA-Z0-9_\-]{20,30}/);
+    if (chijMatch) {
+      placeId = chijMatch[0];
     }
     
-    const cidMatch = window.location.href.match(/!1d([0-9]+)/);
-    if (cidMatch) {
-      data.cid = cidMatch[1];
+    // Pattern 2: Extract hex CID from URL for display
+    const hexMatch = window.location.href.match(/!1s(0x[a-f0-9]+:0x[a-f0-9]+)/);
+    if (hexMatch) {
+      cid = hexMatch[1];
     }
+    
+    if (placeId) {
+      data.placeId = placeId;
+    }
+    
+    if (cid) {
+      data.cid = cid;
+    }
+    
     
     // Mark as detected if we have at least a business name
     data.detected = data.businessName.length > 0;
