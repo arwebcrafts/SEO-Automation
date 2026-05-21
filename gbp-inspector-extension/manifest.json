@@ -9,9 +9,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://www.google.com/*",
-    "https://maps.google.com/*",
-    "https://seo-try.vercel.app/*"
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -22,6 +20,10 @@
         "https://www.google.com/maps/*",
         "https://maps.google.com/*"
       ],
+      "js": ["content.js"]
+    },
+    {
+      "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
   ],

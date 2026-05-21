@@ -47,6 +47,8 @@ function switchTab(tab) {
     loadCompetitorsContent();
   } else if (tab === 'nap') {
     loadNAPContent();
+  } else if (tab === 'website') {
+    loadWebsiteSEOContent();
   }
 }
 
@@ -55,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-audit-btn').addEventListener('click', () => switchTab('audit'));
   document.getElementById('tab-competitors-btn').addEventListener('click', () => switchTab('competitors'));
   document.getElementById('tab-nap-btn').addEventListener('click', () => switchTab('nap'));
+  document.getElementById('tab-website-btn').addEventListener('click', () => switchTab('website'));
   
   loadCompetitorsFromStorage();
   checkCurrentTab();
@@ -118,6 +121,8 @@ document.addEventListener('click', (e) => {
     if (deleteIndex !== null) {
       deleteNAPProfile(parseInt(deleteIndex));
     }
+  } else if (buttonText.includes('Run Website SEO Check')) {
+    runWebsiteSEOCheck();
   }
 });
 
@@ -235,6 +240,24 @@ function loadNAPContent() {
         <button class="btn btn-secondary">Import Current Business NAP</button>
       </div>
     ` : ''}
+  `;
+}
+
+function loadWebsiteSEOContent() {
+  const container = document.getElementById('website-content');
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">🌐 Website Local SEO Checker</div>
+      <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">Check the current website for local SEO elements</p>
+      
+      <button class="btn btn-primary" id="run-seo-check-btn">Run Website SEO Check</button>
+      <div id="seo-check-status" style="margin-top: 8px; font-size: 12px; color: #6b7280;"></div>
+    </div>
+    
+    <div id="website-seo-results" style="display: none;">
+      <!-- Results will be injected here -->
+    </div>
   `;
 }
 
@@ -711,6 +734,162 @@ function importCurrentBusinessNAP() {
   napProfiles.push(profile);
   chrome.storage.local.set({ napProfiles });
   loadNAPContent();
+}
+
+// Run Website SEO Check - uses scripting.executeScript directly (no message passing)
+async function runWebsiteSEOCheck() {
+  const statusDiv = document.getElementById('seo-check-status');
+  const btn = document.getElementById('run-seo-check-btn');
+  
+  if (statusDiv) statusDiv.textContent = 'Checking...';
+  if (btn) btn.disabled = true;
+  
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab || !tab.url) {
+      if (statusDiv) statusDiv.textContent = 'Error: No active tab found';
+      if (btn) btn.disabled = false;
+      return;
+    }
+    
+    // Execute the check directly in the page context - no message passing needed
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const results = {
+          hasLocalBusinessSchema: false,
+          schemaType: null,
+          hasName: false,
+          hasAddress: false,
+          hasPhone: false,
+          hasMapsEmbed: false,
+          hasGBPLink: false,
+          gbpLinkCount: 0
+        };
+        
+        // Check JSON-LD schema
+        document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+          try {
+            const data = JSON.parse(script.textContent);
+            const items = Array.isArray(data) ? data : [data];
+            items.forEach(item => {
+              if (item['@type'] && String(item['@type']).includes('LocalBusiness')) {
+                results.hasLocalBusinessSchema = true;
+                results.schemaType = String(item['@type']);
+              }
+            });
+          } catch (e) {}
+        });
+        
+        // Check microdata
+        const microdata = document.querySelector('[itemscope][itemtype*="LocalBusiness"]');
+        if (microdata) {
+          results.hasLocalBusinessSchema = true;
+          results.schemaType = microdata.getAttribute('itemtype');
+        }
+        
+        // Check phone
+        const bodyText = document.body.textContent;
+        if (/(\+?\d[\d\s\-().]{6,}\d)/.test(bodyText)) results.hasPhone = true;
+        
+        // Check address
+        if (/\d+\s+\w+.*(street|st|avenue|ave|road|rd|blvd|lane|ln|drive|dr|block|phase|sector)/i.test(bodyText)) {
+          results.hasAddress = true;
+        }
+        
+        // Check business name (h1 present)
+        results.hasName = !!document.querySelector('h1');
+        
+        // Check Maps embed
+        results.hasMapsEmbed = document.querySelectorAll('iframe[src*="google.com/maps"], iframe[src*="maps.google.com"]').length > 0;
+        
+        // Check GBP links
+        const gbpLinks = document.querySelectorAll('a[href*="google.com/maps"], a[href*="maps.google.com"], a[href*="business.google.com"]');
+        results.hasGBPLink = gbpLinks.length > 0;
+        results.gbpLinkCount = gbpLinks.length;
+        
+        return results;
+      }
+    });
+    
+    if (result) {
+      displayWebsiteSEOResults(result);
+      if (statusDiv) statusDiv.textContent = '';
+    } else {
+      if (statusDiv) statusDiv.textContent = 'Error: No results returned';
+    }
+  } catch (error) {
+    console.error('Website SEO check error:', error);
+    if (statusDiv) statusDiv.textContent = 'Error: ' + error.message;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Display Website SEO Results
+function displayWebsiteSEOResults(results) {
+  const container = document.getElementById('website-seo-results');
+  container.style.display = 'block';
+  
+  const score = calculateWebsiteSEOScore(results);
+  const scoreClass = score >= 70 ? 'score-high' : score >= 40 ? 'score-medium' : 'score-low';
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">📊 Website SEO Score</div>
+      <div class="score-display">
+        <div class="score-circle ${scoreClass}">${score}</div>
+        <div class="score-label">Local SEO Score</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">🔍 Schema Markup</div>
+      <div class="checklist">
+        ${results.hasLocalBusinessSchema ? '<div class="checklist-item pass">✓ LocalBusiness Schema Found</div>' : '<div class="checklist-item fail">✗ No LocalBusiness Schema</div>'}
+        ${results.schemaType ? `<div class="checklist-item pass">✓ Schema Type: ${escapeHtml(results.schemaType)}</div>` : ''}
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">📍 NAP Information</div>
+      <div class="checklist">
+        ${results.hasName ? '<div class="checklist-item pass">✓ Business Name on Page</div>' : '<div class="checklist-item fail">✗ No Business Name Found</div>'}
+        ${results.hasAddress ? '<div class="checklist-item pass">✓ Address on Page</div>' : '<div class="checklist-item fail">✗ No Address Found</div>'}
+        ${results.hasPhone ? '<div class="checklist-item pass">✓ Phone Number on Page</div>' : '<div class="checklist-item fail">✗ No Phone Number Found</div>'}
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">🗺️ Google Maps Integration</div>
+      <div class="checklist">
+        ${results.hasMapsEmbed ? '<div class="checklist-item pass">✓ Google Maps Embed Found</div>' : '<div class="checklist-item fail">✗ No Google Maps Embed</div>'}
+        ${results.hasGBPLink ? '<div class="checklist-item pass">✓ GBP Link Found</div>' : '<div class="checklist-item fail">✗ No GBP Link</div>'}
+        ${results.gbpLinkCount > 0 ? `<div class="checklist-item pass">✓ ${results.gbpLinkCount} GBP Link(s) Found</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// Calculate Website SEO Score
+function calculateWebsiteSEOScore(results) {
+  let score = 0;
+  const maxScore = 100;
+  
+  // Schema markup (30 points)
+  if (results.hasLocalBusinessSchema) score += 30;
+  
+  // NAP information (40 points - 13.33 each)
+  if (results.hasName) score += 13;
+  if (results.hasAddress) score += 13;
+  if (results.hasPhone) score += 14;
+  
+  // Google Maps integration (30 points - 15 each)
+  if (results.hasMapsEmbed) score += 15;
+  if (results.hasGBPLink) score += 15;
+  
+  return Math.min(score, maxScore);
 }
 
 // Escape HTML to prevent XSS

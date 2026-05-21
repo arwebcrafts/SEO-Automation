@@ -254,12 +254,113 @@ function extractBusinessData() {
   return data;
 }
 
+// Check Website SEO
+function checkWebsiteSEO() {
+  const results = {
+    hasLocalBusinessSchema: false,
+    schemaType: null,
+    hasName: false,
+    hasAddress: false,
+    hasPhone: false,
+    hasMapsEmbed: false,
+    hasGBPLink: false,
+    gbpLinkCount: 0
+  };
+  
+  try {
+    // Check for LocalBusiness schema (JSON-LD)
+    const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+    jsonLdScripts.forEach(script => {
+      try {
+        const data = JSON.parse(script.textContent);
+        if (Array.isArray(data)) {
+          data.forEach(item => {
+            if (item['@type'] && item['@type'].includes('LocalBusiness')) {
+              results.hasLocalBusinessSchema = true;
+              results.schemaType = item['@type'];
+            }
+          });
+        } else if (data['@type'] && data['@type'].includes('LocalBusiness')) {
+          results.hasLocalBusinessSchema = true;
+          results.schemaType = data['@type'];
+        }
+      } catch (e) {
+        // Invalid JSON, skip
+      }
+    });
+    
+    // Check for microdata schema
+    const microdata = document.querySelector('[itemscope][itemtype*="LocalBusiness"]');
+    if (microdata) {
+      results.hasLocalBusinessSchema = true;
+      results.schemaType = microdata.getAttribute('itemtype');
+    }
+    
+    // Check for NAP on page
+    const bodyText = document.body.textContent.toLowerCase();
+    
+    // Check for phone numbers (various formats)
+    const phonePatterns = [
+      /\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+      /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/
+    ];
+    for (const pattern of phonePatterns) {
+      if (pattern.test(bodyText)) {
+        results.hasPhone = true;
+        break;
+      }
+    }
+    
+    // Check for address patterns
+    const addressPatterns = [
+      /\d+\s+[a-zA-Z]+\s+(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr)/i,
+      /\d+\s+[a-zA-Z]+,\s*[a-zA-Z]+/i
+    ];
+    for (const pattern of addressPatterns) {
+      if (pattern.test(bodyText)) {
+        results.hasAddress = true;
+        break;
+      }
+    }
+    
+    // Check for business name (look for h1, h2, or title)
+    const h1 = document.querySelector('h1');
+    const h2 = document.querySelector('h2');
+    const title = document.querySelector('title');
+    if (h1 || h2 || title) {
+      results.hasName = true;
+    }
+    
+    // Check for Google Maps embed
+    const mapsEmbeds = document.querySelectorAll('iframe[src*="google.com/maps"], iframe[src*="maps.google.com"]');
+    results.hasMapsEmbed = mapsEmbeds.length > 0;
+    
+    // Check for GBP links
+    const gbpLinks = document.querySelectorAll('a[href*="google.com/maps"], a[href*="maps.google.com"], a[href*="business.google.com"]');
+    results.hasGBPLink = gbpLinks.length > 0;
+    results.gbpLinkCount = gbpLinks.length;
+    
+  } catch (error) {
+    console.error('Error checking website SEO:', error);
+  }
+  
+  return results;
+}
+
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Content script received message:', request.action);
+  
   if (request.action === 'extractData') {
     const data = extractBusinessData();
     sendResponse(data);
+  } else if (request.action === 'checkWebsiteSEO') {
+    const results = checkWebsiteSEO();
+    console.log('Website SEO check results:', results);
+    sendResponse(results);
   }
+  
+  return true; // Keep message channel open for async response
 });
 
 // Notify that content script is loaded
