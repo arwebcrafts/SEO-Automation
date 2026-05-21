@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -19,13 +20,21 @@ const isPublicRoute = createRouteMatcher([
   "/api/reviews/unsubscribe",
 ]);
 
-export default clerkMiddleware((auth, request) => {
+export default clerkMiddleware(async (auth, request) => {
+  const { userId } = await auth();
+  const url = new URL(request.url);
+
+  // If authenticated user visits homepage, redirect to dashboard
+  if (userId && url.pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (isPublicRoute(request)) {
     return;
   }
 
   // Protect all private routes
-  auth.protect();
+  await auth.protect();
 });
 
 export const config = {

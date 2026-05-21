@@ -2,11 +2,14 @@
 
 import { Header } from "@/components/shared/header";
 import { Footer } from "@/components/shared/footer";
-import { 
-  Search, 
-  BarChart3, 
-  Zap, 
-  Shield, 
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import {
+  Search,
+  BarChart3,
+  Zap,
+  Shield,
   TrendingUp,
   CheckCircle2,
   ArrowRight,
@@ -16,11 +19,33 @@ import {
   FileText,
   Calendar,
   Lightbulb,
-  Layers
+  Layers,
+  LayoutDashboard
 } from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  // Prevent flash of landing page for authenticated users
+  if (isLoaded && isSignedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -65,21 +90,34 @@ export default function HomePage() {
               
               {/* CTA buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-                <Link
-                  href="/sign-up"
-                  className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
-                >
-                  <Layers className="w-5 h-5" />
-                  Get Started Free
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link
-                  href="/sign-in"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-semibold text-slate-900 dark:text-slate-100 shadow-lg hover:-translate-y-0.5"
-                >
-                  Sign In
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
+                {isSignedIn ? (
+                  <Link
+                    href="/dashboard"
+                    className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                    Go to Dashboard
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/sign-up"
+                      className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+                    >
+                      <Layers className="w-5 h-5" />
+                      Get Started Free
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                    <Link
+                      href="/sign-in"
+                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-semibold text-slate-900 dark:text-slate-100 shadow-lg hover:-translate-y-0.5"
+                    >
+                      Sign In
+                      <ArrowRight className="w-5 h-5" />
+                    </Link>
+                  </>
+                )}
               </div>
               
               {/* Trust indicators */}
@@ -373,11 +411,11 @@ export default function HomePage() {
                   </li>
                 </ul>
                 <Link
-                  href="/sign-up"
+                  href={isSignedIn ? "/settings" : "/sign-up"}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold shadow-lg shadow-green-500/25"
                 >
                   <Zap className="w-5 h-5" />
-                  Download Free Plugin
+                  {isSignedIn ? "Go to Settings" : "Download Free Plugin"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </div>

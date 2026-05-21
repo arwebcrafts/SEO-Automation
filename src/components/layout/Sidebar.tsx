@@ -70,16 +70,25 @@ const navSections: NavSection[] = [
     icon: LayoutDashboard,
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-      { id: "audit", label: "New Audit", icon: Search, href: "/audits/new" },
     ],
     collapsible: false,
+  },
+  {
+    id: "audits",
+    label: "Audits",
+    icon: Search,
+    items: [
+      { id: "audit-new", label: "New Audit", icon: Search, href: "/audits/new" },
+      { id: "audit-history", label: "History", icon: History, href: "/audits" },
+    ],
+    collapsible: true,
   },
   {
     id: "content",
     label: "Content",
     icon: FileEdit,
     items: [
-      { id: "content-dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/content/dashboard" },
+      { id: "content-dashboard", label: "Content Overview", icon: LayoutDashboard, href: "/content/dashboard" },
       { id: "strategy", label: "Strategy Hub", icon: BarChart3, href: "/content/analysis" },
       { id: "production", label: "Quick Writer", icon: Zap, href: "/content/production" },
       { id: "auto-pilot", label: "Auto Pilot", icon: Rocket, href: "/content/auto-pilot", badge: "New" },
@@ -94,8 +103,8 @@ const navSections: NavSection[] = [
     label: "Secondary",
     icon: Settings,
     items: [
-      { id: "history", label: "History", icon: History, href: "/audits" },
       { id: "settings", label: "Settings", icon: Settings, href: "/settings" },
+      { id: "help", label: "Help & Docs", icon: HelpCircle, href: "/help" },
     ],
     collapsible: false,
   },
@@ -120,7 +129,7 @@ export default function Sidebar({
   healthScore,
   contentGapsCount,
 }: SidebarProps) {
-  const [expandedSections, setExpandedSections] = useState<string[]>(["content"]);
+  const [expandedSections, setExpandedSections] = useState<string[]>(["content", "audits"]);
   const pathname = usePathname();
   const router = useRouter();
   const sidebarRef = useRef<HTMLDivElement>(null);
