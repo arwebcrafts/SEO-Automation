@@ -358,6 +358,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const results = checkWebsiteSEO();
     console.log('Website SEO check results:', results);
     sendResponse(results);
+  } else if (request.action === 'extractBulkCategories') {
+    const results = extractBulkCategories();
+    console.log('Bulk categories results:', results);
+    sendResponse(results);
   }
   
   return true; // Keep message channel open for async response

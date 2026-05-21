@@ -47,12 +47,15 @@ function switchTab(tab) {
     loadCompetitorsContent();
   } else if (tab === 'nap') {
     loadNAPContent();
+  } else if (tab === 'bulk') {
+    loadBulkCategoriesContent();
   }
 }
 
 // Add tab click listeners
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-audit-btn').addEventListener('click', () => switchTab('audit'));
+  document.getElementById('tab-bulk-btn').addEventListener('click', () => switchTab('bulk'));
   document.getElementById('tab-competitors-btn').addEventListener('click', () => switchTab('competitors'));
   document.getElementById('tab-nap-btn').addEventListener('click', () => switchTab('nap'));
   
@@ -263,6 +266,183 @@ function loadWebsiteSEOContent() {
   btn.addEventListener('click', () => {
     console.log('Run Website SEO Check button clicked!');
     runWebsiteSEOCheck();
+  });
+}
+
+function loadBulkCategoriesContent() {
+  const container = document.getElementById('bulk-content');
+  
+  // Force display with inline styles
+  container.style.display = 'block';
+  container.style.width = '100%';
+  container.style.height = 'auto';
+  container.style.visibility = 'visible';
+  container.style.opacity = '1';
+  
+  container.innerHTML = `
+    <div style="background:white; border-radius:12px; padding:16px; margin-bottom:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+      <div style="font-weight:700; color:#1f2937; margin-bottom:8px;">📊 Bulk Category View</div>
+      <p style="font-size:12px; color:#6b7280; margin-bottom:12px;">Extract categories from top 10 Google Maps search results</p>
+      
+      <button id="extract-categories-btn" style="width:100%; padding:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Extract Categories</button>
+      <div id="bulk-status" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
+    </div>
+    
+    <div id="bulk-results"></div>
+  `;
+  
+  document.getElementById('extract-categories-btn').addEventListener('click', extractBulkCategories);
+}
+
+async function extractBulkCategories() {
+  const statusDiv = document.getElementById('bulk-status');
+  const btn = document.getElementById('extract-categories-btn');
+  
+  statusDiv.textContent = 'Extracting...';
+  btn.disabled = true;
+  
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    
+    if (!tab || !tab.url) {
+      statusDiv.textContent = 'Error: No active tab found';
+      btn.disabled = false;
+      return;
+    }
+    
+    // Execute the extraction directly in the page context
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const results = {
+          isSearchResults: false,
+          businesses: []
+        };
+        
+        // Check if we're on a Google Maps search results page
+        if (!window.location.href.includes('maps.google.com') && !window.location.href.includes('www.google.com/maps')) {
+          return { ...results, error: 'Not on Google Maps' };
+        }
+        
+        // Try to find search result cards
+        const searchResults = document.querySelectorAll('[role="article"], [role="listitem"], .fontHeadlineSmall, a[href*="maps.google.com/place"]');
+        
+        if (searchResults.length === 0) {
+          return { ...results, error: 'No search results found' };
+        }
+        
+        results.isSearchResults = true;
+        
+        // Extract categories from top 10 results
+        let count = 0;
+        searchResults.forEach((result, index) => {
+          if (count >= 10) return;
+          
+          try {
+            const resultText = result.textContent || result.innerText;
+            
+            // Try to find the business name
+            const nameMatch = resultText.match(/^([A-Z][^,]+)/);
+            const name = nameMatch ? nameMatch[1].trim() : 'Unknown Business';
+            
+            // Try to find categories
+            const categoryMatches = resultText.match(/•\s*([^•\n]+)/g) || 
+                                    resultText.match(/·\s*([^·\n]+)/g) ||
+                                    resultText.match(/,\s*([A-Z][a-z]+)/g);
+            
+            const categories = categoryMatches ? categoryMatches.map(m => m.replace(/^[•·,]\s*/, '').trim()).filter(c => c.length > 2) : [];
+            
+            if (name !== 'Unknown Business' && categories.length > 0) {
+              results.businesses.push({
+                name: name,
+                categories: categories
+              });
+              count++;
+            }
+          } catch (e) {
+            // Skip this result
+          }
+        });
+        
+        return results;
+      }
+    });
+    
+    displayBulkCategoriesResults(result);
+    statusDiv.textContent = '';
+  } catch (error) {
+    console.error('Error extracting bulk categories:', error);
+    statusDiv.textContent = 'Error: ' + error.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function displayBulkCategoriesResults(results) {
+  const container = document.getElementById('bulk-results');
+  container.style.display = 'block';
+  
+  if (results.error) {
+    container.innerHTML = `
+      <div class="card">
+        <p style="color: #dc2626; font-size: 13px;">${results.error}</p>
+        <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Navigate to a Google Maps search results page to extract categories.</p>
+        <button class="btn btn-secondary" style="margin-top: 12px;" onclick="openGoogleMaps()">Go to Google Maps</button>
+      </div>
+    `;
+    return;
+  }
+  
+  if (!results.isSearchResults || results.businesses.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <p style="color: #dc2626; font-size: 13px;">No categories found</p>
+        <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Make sure you're on a Google Maps search results page with business listings.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Get all unique categories
+  const allCategories = new Set();
+  results.businesses.forEach(b => {
+    b.categories.forEach(c => allCategories.add(c));
+  });
+  const uniqueCategories = Array.from(allCategories).sort();
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">📊 Category Summary</div>
+      <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+        Found <strong>${results.businesses.length}</strong> businesses with <strong>${uniqueCategories.length}</strong> unique categories
+      </p>
+      
+      <div style="background: #f9fafb; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+        <div style="font-weight: 600; font-size: 13px; color: #1f2937; margin-bottom: 8px;">All Categories:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${uniqueCategories.map(cat => `<span style="background: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #4b5563; border: 1px solid #e5e7eb;">${escapeHtml(cat)}</span>`).join('')}
+        </div>
+      </div>
+      
+      <button class="btn btn-secondary" id="copy-categories-btn" style="width: 100%;">Copy All Categories</button>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">📋 Business Details</div>
+      ${results.businesses.map((business, index) => `
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 8px 0;">
+          <div style="font-weight: 600; font-size: 13px; color: #1f2937;">${index + 1}. ${escapeHtml(business.name)}</div>
+          <div style="margin-top: 4px;">
+            ${business.categories.map(cat => `<span style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #6b7280; margin-right: 4px;">${escapeHtml(cat)}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  document.getElementById('copy-categories-btn').addEventListener('click', () => {
+    const categoriesText = uniqueCategories.join(', ');
+    copyToClipboard(categoriesText, document.getElementById('copy-categories-btn'));
   });
 }
 
