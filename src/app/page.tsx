@@ -66,23 +66,23 @@ export default function HomePage() {
               {/* CTA buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                 <Link
-                  href="/content-strategy"
+                  href="/sign-up"
                   className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
                 >
                   <Layers className="w-5 h-5" />
-                  Open Content Hub
+                  Get Started Free
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link
-                  href="/history"
+                  href="/sign-in"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-semibold text-slate-900 dark:text-slate-100 shadow-lg hover:-translate-y-0.5"
                 >
-                  View History
+                  Sign In
                   <ArrowRight className="w-5 h-5" />
-                </Link>ign-in
+                </Link>
               </div>
               
-              {/* SrgntIntors */}
+              {/* Trust indicators */}
               <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -103,14 +103,9 @@ export default function HomePage() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl blur-xl opacity-20 -z-10"></div>
               <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 lg:p-10 border border-slate-200/50 dark:border-slate-700/50">
-                <AuditForm />
-              </div>
-            </div>
-          </div>
-        </section>
-div className="text-center mb-6">
+                <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                    Try a Free udit
+                    Try a Free Audit
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400">
                     Enter your website URL to get started
@@ -120,20 +115,25 @@ div className="text-center mb-6">
                   <input
                     type="text"
                     placeholder="https://example.com"
-                    className="flex-1 px-4 py-3 roned-lg border border-slate-300 dark:border-slate-600 bg-whte dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ouline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     onClick={() => window.location.href = '/sign-up'}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indig-700 tansition-all font-seibold"
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold"
                   >
                     Analyze
                   </button>
-               <div
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Quick Access Cards */}
         <section className="py-20 px-4 bg-white dark:bg-slate-900 relative overflow-hidden">
           {/* Background decoration */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-          i-up
+          
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-14">
               <span className="inline-block px-4 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-full mb-4">
@@ -148,7 +148,7 @@ div className="text-center mb-6">
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Link href="/sign-npassName="group">
+              <Link href="/sign-up" className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-blue-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
@@ -163,8 +163,8 @@ div className="text-center mb-6">
                 </div>
               </Link>
 
-              <Link href="/content-strategy?view=auto-content" className="group relative">
-                <div classNsigesup3 px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-full z-10 shadow-lg animate-pulse">NEW</div>
+              <Link href="/sign-up" className="group relative">
+                <div className="absolute -top-3 -right-3 px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-full z-10 shadow-lg animate-pulse">NEW</div>
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-purple-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/30">
@@ -179,7 +179,7 @@ div className="text-center mb-6">
                 </div>
               </Link>
 
-              <Link href="/sigt-upclassName="group">
+              <Link href="/sign-up" className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-amber-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-amber-500/30">
@@ -194,7 +194,7 @@ div className="text-center mb-6">
                 </div>
               </Link>
 
-              <Link href="/content-strategy?view=calendar" className="group">
+              <Link href="/sign-up" className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-green-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/30">
@@ -373,7 +373,7 @@ div className="text-center mb-6">
                   </li>
                 </ul>
                 <Link
-                  href="/downloads/seo-auto-fix.zip"
+                  href="/sign-up"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold shadow-lg shadow-green-500/25"
                 >
                   <Zap className="w-5 h-5" />
@@ -401,32 +401,32 @@ div className="text-center mb-6">
                   </div>
                 </div>
               </div>
-            </div>sign-up
+            </div>
           </div>
         </section>
 
         {/* CTA Section */}
         <section className="py-20 px-4 bg-gradient-to-r from-primary to-blue-600">
           <div className="container mx-auto max-w-4xl text-center">
-            <h2 classNa=ign-int-4xl font-bold mb-4 text-white">
+            <h2 className="text-4xl font-bold mb-4 text-white">
               Ready to Improve Your SEO?
             </h2>
-            <p cSagn"In text-white/80 mb-8">
+            <p className="text-xl text-white/80 mb-8">
               Start analyzing your website today and get actionable insights to boost your rankings.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/"
+                href="/sign-up"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary rounded-lg hover:bg-slate-100 transition-colors font-medium"
               >
                 <Search className="w-5 h-5" />
                 Start Free Audit
               </Link>
               <Link
-                href="/history"
+                href="/sign-in"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white border-2 border-white/30 rounded-lg hover:bg-white/20 transition-colors font-medium"
               >
-                View Your History
+                Sign In
               </Link>
             </div>
           </div>
@@ -437,8 +437,4 @@ div className="text-center mb-6">
 
       </div>
     );
-
-  // Only show sidebar for authenticated users
-  return isSignedIn ? (
-    <SidebarLayout>{landingPageContent}</SidebarLayout>
-  ) : (
+}
