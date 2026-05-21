@@ -151,57 +151,47 @@ function extractBusinessData() {
     ];
     data.hasWorkHours = timePatterns.some(pattern => pattern.test(bodyText));
     
-    // Extract categories - look for category button in the main section
-    const excludeText = ['Add a label', 'Suggest an edit', 'Edit', 'Copy', 'Share', 'Save', 'Directions', 'Nearby', 'Send to phone', 'Menu', 'Website', 'Phone', 'Address', 'Hours', 'Plus code', 'Your Maps history', 'Price', 'Rating', 'All filters', 'Back to top', 'Dine-in', 'Takeout', 'Delivery', 'No-contact delivery', 'Search this area', 'Recents', 'Get app', 'See photos', 'Overview', 'Reviews', 'About', 'Write a review', 'Sort', 'All', 'See more', 'Like', 'Learn more', 'Show slider', 'Hide slider', 'Transit', 'Traffic', 'Biking', 'Terrain', 'Street View', 'Wildfires', 'Air Quality', 'Travel time', 'Measure', 'Default', 'Satellite', 'Globe view', 'Labels', 'Global', 'Terms', 'Privacy'];
+    // Extract categories - look for category button specifically
+    const excludeText = ['Add a label', 'Suggest an edit', 'Edit', 'Copy', 'Share', 'Save', 'Directions', 'Nearby', 'Send to phone', 'Menu', 'Website', 'Phone', 'Address', 'Hours', 'Plus code', 'Your Maps history', 'Price', 'Rating', 'All filters', 'Back to top', 'Dine-in', 'Takeout', 'Delivery', 'No-contact delivery', 'Search this area', 'Recents', 'Get app', 'See photos', 'Overview', 'Reviews', 'About', 'Write a review', 'Sort', 'All', 'See more', 'Like', 'Learn more', 'Show slider', 'Hide slider', 'Transit', 'Traffic', 'Biking', 'Terrain', 'Street View', 'Wildfires', 'Air Quality', 'Travel time', 'Measure', 'Default', 'Satellite', 'Globe view', 'Labels', 'Global', 'Terms', 'Privacy', 'Thursdays', 'Friday', 'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'review', 'reviews', 'More', 'Close', 'Open', 'AM', 'PM'];
     const categories = [];
     
-    // Look for category in the business info section specifically
-    const infoSection = document.querySelector('[role="region"][aria-label*="Information"], [role="region"][aria-label*="About"]');
-    if (infoSection) {
-      const buttons = infoSection.querySelectorAll('button');
-      buttons.forEach(el => {
-        if (el.textContent) {
-          const text = el.textContent.trim();
-          if (!categories.includes(text) && 
-              !excludeText.some(exclude => text.toLowerCase().includes(exclude.toLowerCase())) && 
-              text.length > 2 && 
-              text.length < 50 &&
-              text.split(' ').length <= 3 &&
-              !text.includes(':') &&
-              !text.includes('Rs') &&
-              !text.includes('stars') &&
-              !text.includes('reviews') &&
-              !text.includes('filters') &&
-              !text.includes('back') &&
-              !text.includes('+') &&
-              !text.match(/^\d/)) {
-            categories.push(text);
-          }
+    // Look for the category button specifically - it's usually near the top with aria-label containing "category"
+    const categoryButtons = document.querySelectorAll('button[aria-label*="category"], button[role="button"][aria-label]');
+    categoryButtons.forEach(el => {
+      if (el.textContent) {
+        const text = el.textContent.trim();
+        // Very strict filtering for categories
+        if (!categories.includes(text) && 
+            !excludeText.some(exclude => text.toLowerCase().includes(exclude.toLowerCase())) && 
+            text.length > 2 && 
+            text.length < 30 &&
+            text.split(' ').length <= 2 &&
+            !text.includes(':') &&
+            !text.includes('Rs') &&
+            !text.includes('stars') &&
+            !text.includes('review') &&
+            !text.includes('filter') &&
+            !text.includes('back') &&
+            !text.includes('+') &&
+            !text.match(/^\d/) &&
+            !text.includes('day') &&
+            !text.includes('ago') &&
+            !text.includes('month') &&
+            !text.includes('year')) {
+          categories.push(text);
         }
-      });
-    }
+      }
+    });
     
-    // If no categories found in info section, try broader search
+    // If still no categories, try to find from the main heading area
     if (categories.length === 0) {
-      const categoryButtons = document.querySelectorAll('button');
-      categoryButtons.forEach(el => {
-        if (el.textContent) {
-          const text = el.textContent.trim();
-          if (!categories.includes(text) && 
-              !excludeText.some(exclude => text.toLowerCase().includes(exclude.toLowerCase())) && 
-              text.length > 2 && 
-              text.length < 50 &&
-              text.split(' ').length <= 3 &&
-              !text.includes(':') &&
-              !text.includes('Rs') &&
-              !text.includes('stars') &&
-              !text.includes('reviews') &&
-              !text.includes('filters') &&
-              !text.includes('back') &&
-              !text.includes('+') &&
-              !text.match(/^\d/)) {
-            categories.push(text);
-          }
+      // Look for text near the business name that might be a category
+      const allText = document.body.textContent;
+      const commonCategories = ['Restaurant', 'Cafe', 'Bar', 'Hotel', 'Shop', 'Store', 'Service', 'Bank', 'ATM', 'Gas Station', 'Pharmacy', 'Hospital', 'School', 'Church', 'Mosque', 'Temple', 'Gym', 'Salon', 'Spa', 'Dentist', 'Doctor', 'Lawyer', 'Accountant', 'Real Estate', 'Auto Repair', 'Car Wash', 'Laundry', 'Dry Cleaner', 'Bakery', 'Butcher', 'Grocery', 'Supermarket', 'Convenience Store', 'Fast Food', 'Pizza', 'Sushi', 'Chinese', 'Indian', 'Mexican', 'Italian', 'Thai', 'Japanese', 'Korean', 'American', 'Mediterranean', 'Vietnamese', 'French', 'German', 'British'];
+      
+      commonCategories.forEach(cat => {
+        if (allText.includes(cat) && !categories.includes(cat)) {
+          categories.push(cat);
         }
       });
     }
