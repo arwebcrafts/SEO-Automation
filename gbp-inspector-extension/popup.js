@@ -5,6 +5,7 @@ console.log('GBP Inspector Popup Loaded');
 let businessData = null;
 let competitors = [];
 let currentTab = 'audit';
+let originalBusinessData = null; // Store the business being compared against
 
 
 // Load competitors from storage
@@ -65,6 +66,10 @@ document.addEventListener('click', (e) => {
     }
   } else if (buttonText.includes('Clear All')) {
     clearCompetitors();
+  } else if (buttonText.includes('Reset to Original')) {
+    resetToOriginalBusiness();
+  } else if (buttonText.includes('Generate Review Link')) {
+    generateReviewLink();
   } else if (buttonText.includes('Export to CSV')) {
     exportToCSV();
   } else if (buttonText.includes('Open Full Audit')) {
@@ -141,7 +146,10 @@ function loadAuditContent() {
 function loadCompetitorsContent() {
   const container = document.getElementById('competitors-content');
   
-  if (!businessData || !businessData.detected) {
+  // Use original business data if available, otherwise use current business data
+  const displayData = originalBusinessData || businessData;
+  
+  if (!displayData || !displayData.detected) {
     container.innerHTML = `
       <div class="no-data">
         <div class="no-data-icon">🔍</div>
@@ -152,7 +160,7 @@ function loadCompetitorsContent() {
     return;
   }
   
-  displayCompetitorsContent(businessData, container);
+  displayCompetitorsContent(displayData, container);
 }
 
 function displayAuditContent(data, container) {
@@ -236,11 +244,15 @@ function displayAuditContent(data, container) {
       ` : ''}
     </div>
     
-    <button class="btn btn-primary" onclick="exportToCSV()">
+    <button class="btn btn-primary">
       📥 Export to CSV
     </button>
     
-    <button class="btn btn-secondary" onclick="openFullAudit()">
+    <button class="btn btn-secondary" id="review-link-btn">
+      🔗 Generate Review Link
+    </button>
+    
+    <button class="btn btn-secondary">
       🔍 Open Full Audit in Web App
     </button>
   `;
@@ -248,15 +260,17 @@ function displayAuditContent(data, container) {
 
 function displayCompetitorsContent(data, container) {
   const yourCategories = [data.primaryCategory, ...data.additionalCategories].filter(c => c);
+  const isOriginal = originalBusinessData && originalBusinessData.businessName === data.businessName;
   
   container.innerHTML = `
     <div class="card">
       <div class="card-title">🏆 Your Categories</div>
-      <div class="business-name">${data.businessName}</div>
+      <div class="business-name">${data.businessName} ${isOriginal ? '<span style="font-size: 11px; color: #16a34a; margin-left: 8px;">(Original)</span>' : ''}</div>
       <div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">
         ${yourCategories.map(c => `<span style="background: #e0e7ff; color: #667eea; padding: 4px 8px; border-radius: 12px; margin-right: 4px; margin-bottom: 4px; display: inline-block;">${c}</span>`).join('')}
       </div>
       <button class="btn btn-secondary">➕ Add Competitor (Current Page)</button>
+      ${!isOriginal && originalBusinessData ? `<button class="btn btn-secondary" style="margin-top: 8px;">🔄 Reset to Original Business</button>` : ''}
     </div>
     
     <div class="card">
@@ -505,37 +519,35 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
-// Open full audit in web app
-function openFullAudit() {
-  if (!businessData) return;
+
+// Generate Review Link
+function generateReviewLink() {
+  if (!businessData || !businessData.placeId) {
+    alert('No Place ID found. Cannot generate review link.');
+    return;
+  }
   
-  const url = `https://seo-try.vercel.app/gbp-audit?url=${encodeURIComponent(businessData.googleMapsUrl)}`;
-  chrome.tabs.create({ url });
-}
-
-// Open Google Maps
-function openGoogleMaps() {
-  chrome.tabs.create({ url: 'https://www.google.com/maps' });
-}
-
-// Escape HTML to prevent XSS
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-// Open full audit in web app
-function openFullAudit() {
-  if (!businessData) return;
+  const reviewLink = `https://search.google.com/local/writereview?placeid=${businessData.placeId}`;
   
-  const url = `https://seo-try.vercel.app/gbp-audit?url=${encodeURIComponent(businessData.googleMapsUrl)}`;
-  chrome.tabs.create({ url });
-}
-
-// Open Google Maps
-function openGoogleMaps() {
-  chrome.tabs.create({ url: 'https://www.google.com/maps' });
+  // Copy to clipboard
+  navigator.clipboard.writeText(reviewLink).then(() => {
+    // Show success message
+    const btn = document.getElementById('review-link-btn');
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#16a34a';
+    
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    // Fallback: open the link directly
+    chrome.tabs.create({ url: reviewLink });
+  });
 }
 
 // Escape HTML to prevent XSS
