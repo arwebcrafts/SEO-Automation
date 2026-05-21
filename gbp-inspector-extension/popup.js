@@ -177,9 +177,16 @@ function displayAuditContent(data, container) {
   container.innerHTML = `
     <div class="card">
       <div class="business-name">${escapeHtml(data.businessName)}</div>
-      <span class="status-badge ${data.detected ? 'status-detected' : 'status-not-detected'}">
-        ${data.detected ? '✓ Business Detected' : '✗ Not Detected'}
-      </span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+        <span class="status-badge ${data.detected ? 'status-detected' : 'status-not-detected'}">
+          ${data.detected ? '✓ Business Detected' : '✗ Not Detected'}
+        </span>
+        ${data.isClaimed !== null ? `
+          <span class="status-badge ${data.isClaimed ? 'status-claimed' : 'status-unclaimed'}">
+            ${data.isClaimed ? '🔒 Claimed' : '🔓 Unclaimed'}
+          </span>
+        ` : ''}
+      </div>
     </div>
     
     <div class="card">
@@ -197,6 +204,7 @@ function displayAuditContent(data, container) {
         ${data.hasWorkHours ? '<div class="checklist-item pass">✓ Business Hours</div>' : '<div class="checklist-item fail">✗ Business Hours</div>'}
         ${parseInt(data.photoCount) >= 5 ? '<div class="checklist-item pass">✓ Photos (5+)</div>' : '<div class="checklist-item fail">✗ Photos (need 5+)</div>'}
         ${data.rating ? '<div class="checklist-item pass">✓ Reviews</div>' : '<div class="checklist-item fail">✗ Reviews</div>'}
+        ${data.isClaimed ? '<div class="checklist-item pass">✓ GBP Claimed</div>' : data.isClaimed === false ? '<div class="checklist-item fail">✗ GBP Unclaimed</div>' : ''}
       </div>
     </div>
     
