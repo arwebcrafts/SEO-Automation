@@ -37,8 +37,14 @@ function switchTab(tab) {
   // Update tab content
   document.querySelectorAll('.tab-content').forEach(content => {
     content.classList.remove('active');
+    content.style.display = 'none';
   });
-  document.getElementById(`${tab}-content`).classList.add('active');
+  
+  const activeContent = document.getElementById(`${tab}-content`);
+  activeContent.classList.add('active');
+  activeContent.style.display = 'block';
+  activeContent.style.width = '100%';
+  activeContent.style.height = 'auto';
   
   // Load content for the tab
   if (tab === 'audit') {
