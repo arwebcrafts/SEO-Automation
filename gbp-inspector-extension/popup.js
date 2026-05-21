@@ -248,6 +248,9 @@ function loadWebsiteSEOContent() {
   const container = document.getElementById('website-content');
   console.log('website-content container:', container);
   
+  // Force display via inline style on the element
+  container.setAttribute('style', 'display: block !important; width: 100%; height: auto; visibility: visible; opacity: 1; position: static;');
+  
   container.innerHTML = `
     <div style="background:white; border-radius:12px; padding:16px; margin-bottom:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
       <div style="font-weight:700; color:#1f2937; margin-bottom:8px;">🌐 Website Local SEO Checker</div>
@@ -528,7 +531,17 @@ function showNotOnMaps() {
         Go to Google Maps
       </button>
     </div>
+    <div style="background:white; border-radius:12px; padding:16px; margin-top:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+      <div style="font-weight:700; color:#1f2937; margin-bottom:8px;">🌐 Website Local SEO Checker</div>
+      <p style="font-size:12px; color:#6b7280; margin-bottom:12px;">Check this website for local SEO signals</p>
+      <button id="run-seo-check-btn" style="width:100%; padding:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Run Website SEO Check</button>
+      <div id="seo-check-status" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
+      <div id="website-seo-results"></div>
+    </div>
   `;
+  
+  // Add click listener for the SEO check button
+  document.getElementById('run-seo-check-btn').addEventListener('click', runWebsiteSEOCheck);
 }
 
 // Show no data message
