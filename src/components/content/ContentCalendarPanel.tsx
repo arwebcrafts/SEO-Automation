@@ -4,10 +4,10 @@ import React, { useState, useEffect } from "react";
 import { Calendar, momentLocalizer, Views, View } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Plus,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Calendar as CalendarIcon,
   Loader2,
@@ -17,8 +17,11 @@ import {
   FileText,
   MapPin,
   Globe,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const localizer = momentLocalizer(moment);
 
@@ -223,7 +226,47 @@ export default function ContentCalendarPanel() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+      {filteredEvents.length === 0 ? (
+        <EmptyState
+          illustration={
+            <div className="relative">
+              <div className="w-48 h-48 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl flex items-center justify-center mx-auto backdrop-blur-sm opacity-50">
+                <div className="grid grid-cols-7 gap-1 opacity-30">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 rounded-sm ${
+                        i === 12 || i === 20 || i === 28
+                          ? 'bg-blue-400 dark:bg-blue-600'
+                          : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="absolute -top-2 -right-2 w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center animate-pulse">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          }
+          title={statusFilter !== "all" ? "No events match your filter" : "Your calendar is empty"}
+          description={
+            statusFilter !== "all"
+              ? "Try clearing the filter to see all scheduled content."
+              : "Start scheduling your content to visualize your publishing calendar. Schedule your first draft to get started!"
+          }
+          action={
+            <button
+              onClick={() => window.location.href = "/content-strategy?view=production"}
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+            >
+              <Zap className="w-4 h-4" />
+              Schedule Your First Content
+            </button>
+          }
+        />
+      ) : (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
         {/* Custom Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
@@ -319,6 +362,7 @@ export default function ContentCalendarPanel() {
           />
         </div>
       </div>
+      )}
 
       <style jsx global>{`
         .calendar-dark-mode .rbc-calendar {

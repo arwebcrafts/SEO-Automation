@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  FileText, 
-  Calendar, 
-  Clock, 
-  Edit, 
-  Trash2, 
+import {
+  FileText,
+  Calendar,
+  Clock,
+  Edit,
+  Trash2,
   ExternalLink,
   Plus,
   Search,
@@ -25,9 +25,14 @@ import {
   Globe,
   Check,
   X,
+  Zap,
+  Rocket,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import Link from "next/link";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Draft {
   id: string;
@@ -173,6 +178,16 @@ export default function DraftsPanel() {
     }
   };
 
+  const handleBulkSchedule = async () => {
+    if (selectedDrafts.size === 0) return;
+    alert('Bulk schedule functionality coming soon!');
+  };
+
+  const handleBulkPublish = async () => {
+    if (selectedDrafts.size === 0) return;
+    alert('Bulk publish functionality coming soon!');
+  };
+
   const clearSelection = () => {
     setSelectedDrafts(new Set());
   };
@@ -246,7 +261,7 @@ export default function DraftsPanel() {
 
       {/* Bulk Action Bar */}
       {selectedDrafts.size > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
+        <div className="sticky top-0 z-20 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
               {selectedDrafts.size} draft{selectedDrafts.size > 1 ? 's' : ''} selected
@@ -260,11 +275,25 @@ export default function DraftsPanel() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleBulkSchedule}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium"
+            >
+              <Calendar className="w-4 h-4" />
+              Schedule
+            </button>
+            <button
+              onClick={handleBulkPublish}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              <Rocket className="w-4 h-4" />
+              Publish
+            </button>
+            <button
               onClick={handleBulkDelete}
               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
             >
               <Trash2 className="w-4 h-4" />
-              Delete Selected
+              Delete
             </button>
           </div>
         </div>
@@ -298,18 +327,16 @@ export default function DraftsPanel() {
             <button
               onClick={() => setViewMode("grid")}
               className={`p-2 rounded-lg transition-colors ${viewMode === "grid" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600" : "hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"}`}
+              title="Grid view"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
+              <LayoutGrid className="w-5 h-5" />
             </button>
             <button
               onClick={() => setViewMode("list")}
               className={`p-2 rounded-lg transition-colors ${viewMode === "list" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600" : "hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"}`}
+              title="List view"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <List className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -317,26 +344,33 @@ export default function DraftsPanel() {
 
       {/* Drafts List/Grid */}
       {filteredDrafts.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
-          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-slate-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            No drafts found
-          </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
-            {searchQuery || statusFilter !== "all"
-              ? "Try adjusting your search or filters"
-              : "Generate content from the AI Writer to create your first draft"}
-          </p>
-          <button
-            onClick={() => window.location.href = "/content-strategy?view=production"}
-            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Content
-          </button>
-        </div>
+        <EmptyState
+          illustration={
+            <div className="relative">
+              <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="w-16 h-16 text-blue-400 dark:text-blue-300" />
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center animate-pulse">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+            </div>
+          }
+          title={searchQuery || statusFilter !== "all" ? "No drafts match your search" : "No drafts yet"}
+          description={
+            searchQuery || statusFilter !== "all"
+              ? "Try adjusting your search terms or filters to find what you're looking for."
+              : "Start creating amazing content with AI-powered writing. Generate your first draft to get started!"
+          }
+          action={
+            <button
+              onClick={() => window.location.href = "/content-strategy?view=production"}
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+            >
+              <Zap className="w-4 h-4" />
+              Generate Your First Draft
+            </button>
+          }
+        />
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredDrafts.map((draft) => {

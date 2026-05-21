@@ -6,6 +6,9 @@ import {
   ExternalLink, Trash2, Eye, FileText, Image as ImageIcon, Filter, Globe,
 } from "lucide-react";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 interface ScheduledPost {
   id: string;
@@ -27,11 +30,27 @@ export default function ScheduledPostsProgress() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  const [isTimeout, setIsTimeout] = useState(false);
   const { activeWebsite, openWebsiteSwitcher } = useContentStrategy();
 
   useEffect(() => {
     loadScheduledPosts();
   }, [activeWebsite?.id]);
+
+  // Timeout after 10 seconds
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (isLoading) {
+      timeoutId = setTimeout(() => {
+        setIsTimeout(true);
+      }, 10000);
+    } else {
+      setIsTimeout(false);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
 
   const loadScheduledPosts = async () => {
     setIsLoading(true);
@@ -103,10 +122,51 @@ export default function ScheduledPostsProgress() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">Loading scheduled posts...</p>
+      <div className="space-y-6">
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-lg" />
+                <div className="flex-1">
+                  <Skeleton className="h-6 w-12 mb-2" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Timeout Message */}
+        {isTimeout && (
+          <Alert variant="warning" title="Loading">
+            Taking longer than usual. Please wait...
+          </Alert>
+        )}
+
+        {/* Filter Bar Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="w-12 h-12 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -242,9 +302,15 @@ export default function ScheduledPostsProgress() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-        </div>
+        <Alert variant="error" title="Error" onClose={() => setError(null)}>
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={loadScheduledPosts}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </Alert>
       )}
 
       {/* Posts List */}

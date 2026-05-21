@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { Alert } from "@/components/ui/Alert";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import LocationSelector from "./LocationSelector";
 
 interface AnalysisData {
@@ -66,9 +69,33 @@ export default function AutoPilotEngine() {
   
   const [postsPerDay, setPostsPerDay] = useState(1);
   const [postingTimes, setPostingTimes] = useState(["09:00"]);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [totalPosts, setTotalPosts] = useState(30);
+
+  // Auto-calc: changing posts per day updates total posts
+  const handlePostsPerDayChange = (value: number) => {
+    setPostsPerDay(value);
+    // Estimate 30 days in month for auto-calc
+    setTotalPosts(value * 30);
+  };
+
+  // Auto-calc: changing total posts updates posts per day
+  const handleTotalPostsChange = (value: number) => {
+    setTotalPosts(value);
+    // Estimate 30 days in month for auto-calc
+    setPostsPerDay(Math.ceil(value / 30));
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    if (date) {
+      setStartDate(date);
+    }
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDate(date);
+  };
   const [pastDateMode, setPastDateMode] = useState<"instant" | "delayed" | "normal">("normal");
   const [delayInterval, setDelayInterval] = useState(1);
   const [delayUnit, setDelayUnit] = useState<"hours" | "days">("hours");
@@ -870,18 +897,53 @@ export default function AutoPilotEngine() {
     setSaveError(null);
     try {
       const approvedContent = generatedContents.filter(c => c.status === "approved" || c.status === "completed");
+
+      if (approvedContent.length === 0) {
+        throw new Error("No approved content to save. Please approve at least one content piece.");
+      }
+
+      // Validate each content piece before saving
+      for (const content of approvedContent) {
+        if (!content.title || content.title.trim() === "") {
+          throw new Error(`Content "${content.id}" is missing a title`);
+        }
+        if (!content.content || content.content.trim() === "") {
+          throw new Error(`Content "${content.title}" is missing content`);
+        }
+        if (!content.scheduledDate) {
+          throw new Error(`Content "${content.title}" is missing a scheduled date`);
+        }
+      }
+
       const response = await fetch("/api/scheduled-posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          posts: approvedContent.map(c => ({ title: c.title, content: c.content, wordCount: c.wordCount, featuredImageUrl: c.imageUrl, scheduledFor: new Date(c.scheduledDate).toISOString(), scheduledTime: c.scheduledTime, focusKeyword: c.keywords[0] || "", secondaryKeywords: c.keywords.slice(1), postStatus: "scheduled" })),
+          posts: approvedContent.map(c => ({
+            title: c.title,
+            content: c.content,
+            wordCount: c.wordCount,
+            featuredImageUrl: c.imageUrl,
+            scheduledFor: new Date(c.scheduledDate).toISOString(),
+            scheduledTime: c.scheduledTime,
+            focusKeyword: c.keywords[0] || "",
+            secondaryKeywords: c.keywords.slice(1),
+            postStatus: "scheduled"
+          })),
         }),
       });
-      if (!response.ok) throw new Error("Failed to save scheduled posts");
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save scheduled posts");
+      }
+
       setGeneratedContents(prev => prev.map(c => (c.status === "approved" || c.status === "completed") ? { ...c, status: "approved" } : c));
-      alert(`Successfully saved ${approvedContent.length} posts to schedule!`);
+      alert(`Successfully saved ${approvedContent.length} posts to schedule!\n\nYou can view and manage them in the Calendar tab.`);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save");
+      const errorMessage = err instanceof Error ? err.message : "Failed to save";
+      setSaveError(errorMessage);
+      alert(`Save failed: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
@@ -943,28 +1005,48 @@ export default function AutoPilotEngine() {
       ) : (
         <Alert variant="warning" title="WordPress Not Connected" className="mb-6">
           <div className="mt-3">
-            <p className="mb-3">Connect your WordPress site to automatically publish AI-generated content. Follow these steps:</p>
-            <ol className="space-y-2 list-decimal list-inside">
-              <li>Download the SEO AutoFix plugin below</li>
-              <li>Upload and activate the plugin in WordPress (Plugins → Add New → Upload)</li>
-              <li>Click "Connect WordPress" and authorize the connection</li>
-            </ol>
-            <div className="flex flex-wrap gap-3 mt-4">
-              <a
-                href="/downloads/seo-auto-fix.zip"
-                download
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors font-medium"
-              >
-                <Download className="w-4 h-4" />
-                Download Plugin
-              </a>
-              <button
-                onClick={() => setShowWpConnectModal(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-medium"
-              >
-                <Plug className="w-4 h-4" />
-                Connect WordPress
-              </button>
+            <p className="mb-4 font-medium text-slate-900 dark:text-slate-100">Connect your WordPress site to automatically publish AI-generated content.</p>
+            
+            {/* 3-Step Plugin Install Card */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-start gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold">1</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100">Download Plugin</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Get the SEO AutoFix plugin ZIP file</p>
+                </div>
+                <a
+                  href="/downloads/seo-auto-fix.zip"
+                  download
+                  className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </a>
+              </div>
+              
+              <div className="flex items-start gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold">2</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100">Upload & Activate</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Go to Plugins → Add New → Upload in WordPress</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold">3</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100">Connect Site</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Authorize the connection and start publishing</p>
+                </div>
+                <button
+                  onClick={() => setShowWpConnectModal(true)}
+                  className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  <Plug className="w-4 h-4" />
+                  Connect
+                </button>
+              </div>
             </div>
           </div>
         </Alert>
@@ -1110,46 +1192,46 @@ export default function AutoPilotEngine() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Posts Per Day</label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="5" 
-                    value={postsPerDay} 
-                    onChange={(e) => setPostsPerDay(parseInt(e.target.value) || 1)} 
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  <NumberStepper
+                    value={postsPerDay}
+                    onChange={handlePostsPerDayChange}
+                    min={1}
+                    max={5}
+                    step={1}
+                    className="w-full"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Total Posts for Month</label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="60" 
-                    value={totalPosts} 
-                    onChange={(e) => setTotalPosts(parseInt(e.target.value) || 30)} 
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  <NumberStepper
+                    value={totalPosts}
+                    onChange={handleTotalPostsChange}
+                    min={1}
+                    max={60}
+                    step={5}
+                    className="w-full"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Date</label>
-                  <input 
-                    type="date" 
-                    value={startDate} 
-                    onChange={(e) => setStartDate(e.target.value)} 
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  <input
+                    type="date"
+                    value={startDate instanceof Date ? startDate.toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">End Date (Optional)</label>
-                  <input 
-                    type="date" 
-                    value={endDate} 
-                    onChange={(e) => setEndDate(e.target.value)} 
-                    min={startDate}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" 
+                  <input
+                    type="date"
+                    value={endDate instanceof Date ? endDate.toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value) : undefined)}
+                    min={startDate instanceof Date ? startDate.toISOString().split('T')[0] : undefined}
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
                   />
                 </div>
               </div>
@@ -1170,11 +1252,10 @@ export default function AutoPilotEngine() {
                 <div className="space-y-2">
                   {postingTimes.map((time, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="time"
+                      <TimePicker
                         value={time}
-                        onChange={(e) => handleUpdatePostingTime(index, e.target.value)}
-                        className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                        onChange={(value) => handleUpdatePostingTime(index, value)}
+                        className="flex-1"
                       />
                       {postingTimes.length > 1 && (
                         <button
@@ -1227,17 +1308,16 @@ export default function AutoPilotEngine() {
                       </div>
                     </label>
                   </div>
-                  
+
                   {pastDateMode === "delayed" && (
                     <div className="mt-4 flex items-center gap-3">
                       <label className="text-sm font-medium text-amber-700 dark:text-amber-300">Delay Interval:</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="30"
+                      <NumberStepper
                         value={delayInterval}
-                        onChange={(e) => setDelayInterval(parseInt(e.target.value) || 1)}
-                        className="w-20 px-3 py-1 border border-amber-300 dark:border-amber-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-amber-900/30 dark:text-amber-100"
+                        onChange={setDelayInterval}
+                        min={1}
+                        max={30}
+                        step={1}
                       />
                       <select
                         value={delayUnit}
@@ -1251,6 +1331,49 @@ export default function AutoPilotEngine() {
                   )}
                 </div>
               )}
+
+              {/* Schedule Preview */}
+              <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h4 className="font-medium text-slate-900 dark:text-slate-100">Schedule Preview</h4>
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center py-1">{day}</div>
+                  ))}
+                  {generateScheduledDates(Math.min(14, totalPosts)).map((date, i) => {
+                    const dayOfWeek = date.getDay();
+                    const isStart = i === 0;
+                    const hasPost = i % Math.ceil(7 / postsPerDay) < postsPerDay;
+                    return (
+                      <div
+                        key={i}
+                        className={`h-12 rounded-lg flex flex-col items-center justify-center text-xs transition-all ${
+                          isStart
+                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-500 dark:border-blue-400'
+                            : hasPost
+                            ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+                            : 'bg-slate-100 dark:bg-slate-700/30 text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        <span className="font-medium">{date.getDate()}</span>
+                        {hasPost && <span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-500 dark:border-blue-400 rounded" />
+                    <span>Start Date</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded" />
+                    <span>Scheduled Post</span>
+                  </div>
+                </div>
+              </div>
               
               <div className="mt-6 p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -1914,7 +2037,29 @@ export default function AutoPilotEngine() {
       </div>
 
       {/* Navigation */}
-      <div className="max-w-4xl mx-auto mt-8 flex items-center justify-between">
+      <div className="max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-700 pt-6 mt-8 flex items-center justify-between">
+        <button onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))} disabled={currentStep === 1} className="inline-flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="w-4 h-4" />Back</button>
+        <button onClick={() => setCurrentStep(prev => Math.min(6, prev + 1))} disabled={!canProceed() || currentStep === 6} className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Continue<ChevronRight className="w-4 h-4" /></button>
+      </div>
+    </div>
+  );
+}
+                </button>
+                <button
+                  onClick={confirmGenerateContent}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  <Play className="w-4 h-4" />
+                  Start Generation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-700 pt-6 mt-8 flex items-center justify-between">
         <button onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))} disabled={currentStep === 1} className="inline-flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="w-4 h-4" />Back</button>
         <button onClick={() => setCurrentStep(prev => Math.min(6, prev + 1))} disabled={!canProceed() || currentStep === 6} className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Continue<ChevronRight className="w-4 h-4" /></button>
       </div>
