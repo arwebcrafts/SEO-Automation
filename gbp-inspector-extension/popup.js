@@ -324,8 +324,8 @@ async function extractBulkCategories() {
           return { ...results, error: 'Not on Google Maps' };
         }
         
-        // Try to find search result cards
-        const searchResults = document.querySelectorAll('[role="article"], [role="listitem"], .fontHeadlineSmall, a[href*="maps.google.com/place"]');
+        // Try to find search result cards using more specific selectors
+        const searchResults = document.querySelectorAll('[role="article"]');
         
         if (searchResults.length === 0) {
           return { ...results, error: 'No search results found' };
@@ -333,24 +333,40 @@ async function extractBulkCategories() {
         
         results.isSearchResults = true;
         
+        // Known category keywords to filter (lowercase for case-insensitive matching)
+        const categoryKeywords = new Set(['restaurant', 'pizza', 'bakery', 'cafe', 'bar', 'hotel', 'gym', 'spa', 'salon', 'store', 'shop', 'market', 'bank', 'atm', 'pharmacy', 'gas station', 'parking', 'family-friendly', 'fast food', 'italian', 'chinese', 'american', 'mexican', 'indian', 'japanese', 'thai', 'mediterranean', 'bbq', 'steakhouse', 'seafood', 'vegetarian', 'vegan', 'dessert', 'ice cream', 'coffee shop', 'tea house', 'breakfast', 'lunch', 'dinner', 'delivery', 'takeout', 'dine-in']);
+        
         // Extract categories from top 10 results
         let count = 0;
         searchResults.forEach((result, index) => {
           if (count >= 10) return;
           
           try {
-            const resultText = result.textContent || result.innerText;
+            // Get the business name (first text element)
+            const nameElement = result.querySelector('[role="heading"], .fontHeadlineSmall, h3, a');
+            const name = nameElement ? nameElement.textContent.trim().split('\n')[0].trim() : 'Unknown Business';
             
-            // Try to find the business name
-            const nameMatch = resultText.match(/^([A-Z][^,]+)/);
-            const name = nameMatch ? nameMatch[1].trim() : 'Unknown Business';
+            // Get all text and filter for categories
+            const allText = result.textContent || result.innerText;
             
-            // Try to find categories
-            const categoryMatches = resultText.match(/•\s*([^•\n]+)/g) || 
-                                    resultText.match(/·\s*([^·\n]+)/g) ||
-                                    resultText.match(/,\s*([A-Z][a-z]+)/g);
+            // Split by common delimiters and clean up
+            const words = allText.split(/[\n·•\s,]+/).filter(w => w.trim().length > 2);
             
-            const categories = categoryMatches ? categoryMatches.map(m => m.replace(/^[•·,]\s*/, '').trim()).filter(c => c.length > 2) : [];
+            // Filter words that exactly match category keywords (case-insensitive)
+            const categories = words.filter(word => {
+              const originalWord = word.trim();
+              // Reject any word containing digits
+              if (/\d/.test(originalWord)) return false;
+              
+              // Remove all special characters
+              const cleanWord = originalWord.toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+              // Only match if it's in our keyword list
+              return cleanWord.length > 2 && categoryKeywords.has(cleanWord);
+            }).map(c => {
+              // Capitalize first letter for display
+              const capitalized = c.trim().charAt(0).toUpperCase() + c.trim().slice(1).toLowerCase();
+              return capitalized;
+            }).filter((c, i, arr) => arr.indexOf(c) === i); // Remove duplicates
             
             if (name !== 'Unknown Business' && categories.length > 0) {
               results.businesses.push({
