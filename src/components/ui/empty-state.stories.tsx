@@ -63,7 +63,7 @@ export const CustomIllustration: Story = {
     description: 'Your content has been analyzed successfully.',
     illustration: (
       <svg
-        className="w-24 h-24 mx-auto text-accentAI-500"
+        className="w-24 h-24 mx-auto text-accent-500"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

@@ -33,7 +33,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import SearchResultPreview from "./SearchResultPreview";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
-import { Alert } from "@/components/ui/Alert";
 
 interface DiscoveryData {
   services: string[];
@@ -896,9 +895,9 @@ Return ONLY the JSON object, no other text.`,
             </div>
 
             {wpConnectError && (
-              <Alert variant="error" className="mb-4">
-                {wpConnectError}
-              </Alert>
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-700 dark:text-red-300">{wpConnectError}</p>
+              </div>
             )}
 
             {handshakeStatus === "pending" && (
@@ -1080,9 +1079,9 @@ Return ONLY the JSON object, no other text.`,
 
               {/* Error Message */}
               {error && (
-                <Alert variant="error">
-                  {error}
-                </Alert>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
               )}
 
               {/* Auto Step Actions */}
@@ -1351,9 +1350,9 @@ Return ONLY the JSON object, no other text.`,
 
               {/* Error Message */}
               {error && (
-                <Alert variant="error">
-                  {error}
-                </Alert>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
               )}
 
               {/* Generation Method Toggle */}

@@ -966,7 +966,7 @@ Return ONLY the HTML content, no markdown formatting, no intro/outro text.`;
                         {([Views.MONTH, Views.WEEK, Views.DAY] as View[]).map((v) => (
                           <Button
                             key={v}
-                            variant={view === v ? "default" : "outline"}
+                            variant={view === v ? "primary" : "outline"}
                             size="sm"
                             onClick={() => setView(v)}
                           >

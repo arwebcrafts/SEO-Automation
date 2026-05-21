@@ -385,7 +385,7 @@ Return ONLY the HTML content, no markdown formatting, no intro/outro text.`;
           </Button>
           <Button
             onClick={handlePublishNow}
-            variant="default"
+            variant="primary"
             disabled={isLoading}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
           >

@@ -874,7 +874,7 @@ export default function PlannerView({
                           {[Views.MONTH, Views.WEEK, Views.DAY].map((v) => (
                             <Button
                               key={v}
-                              variant={view === v ? "default" : "outline"}
+                              variant={view === v ? "primary" : "outline"}
                               size="sm"
                               onClick={() => setView(v)}
                             >

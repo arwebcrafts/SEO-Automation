@@ -43,14 +43,14 @@ export const AccentColors: Story = {
       </p>
       
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {Object.entries(colors.accentAI).map(([key, value]) => (
+        {Object.entries(colors.accent).map(([key, value]) => (
           <div key={key} className="space-y-2">
-            <div 
+            <div
               className="h-20 w-full rounded-lg shadow-sm border border-slate-200"
-              style={{ backgroundColor: value }}
+              style={{ backgroundColor: value as string }}
             />
             <div className="text-sm font-medium text-slate-900">{key}</div>
-            <div className="text-xs text-slate-500 font-mono">{value}</div>
+            <div className="text-xs text-slate-500 font-mono">{value as string}</div>
           </div>
         ))}
       </div>
@@ -102,14 +102,14 @@ export const SemanticColors: Story = {
         <h2 className="text-2xl font-bold text-slate-900 mb-4">Error - Red</h2>
         <p className="text-slate-600 mb-6">Negative states, destructive actions</p>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {Object.entries(colors.error).map(([key, value]) => (
+          {Object.entries(colors.danger).map(([key, value]) => (
             <div key={key} className="space-y-2">
-              <div 
+              <div
                 className="h-20 w-full rounded-lg shadow-sm border border-slate-200"
-                style={{ backgroundColor: value }}
+                style={{ backgroundColor: value as string }}
               />
               <div className="text-sm font-medium text-slate-900">{key}</div>
-              <div className="text-xs text-slate-500 font-mono">{value}</div>
+              <div className="text-xs text-slate-500 font-mono">{value as string}</div>
             </div>
           ))}
         </div>

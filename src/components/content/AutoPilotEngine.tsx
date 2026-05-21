@@ -8,7 +8,6 @@ import {
   Download, AlertCircle, Plug, XCircle,
 } from "lucide-react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
-import { Alert } from "@/components/ui/Alert";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { NumberStepper } from "@/components/ui/number-stepper";
@@ -1003,7 +1002,11 @@ export default function AutoPilotEngine() {
           </div>
         </div>
       ) : (
-        <Alert variant="warning" title="WordPress Not Connected" className="mb-6">
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <h3 className="font-semibold text-amber-900 dark:text-amber-100">WordPress Not Connected</h3>
+          </div>
           <div className="mt-3">
             <p className="mb-4 font-medium text-slate-900 dark:text-slate-100">Connect your WordPress site to automatically publish AI-generated content.</p>
             
@@ -1049,7 +1052,7 @@ export default function AutoPilotEngine() {
               </div>
             </div>
           </div>
-        </Alert>
+        </div>
       )}
 
       {/* WordPress Connection Modal */}
@@ -2022,28 +2025,6 @@ export default function AutoPilotEngine() {
                   className="px-6 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-medium"
                 >
                   Cancel
-                </button>
-                <button
-                  onClick={confirmGenerateContent}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                >
-                  <Play className="w-4 h-4" />
-                  Start Generation
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <div className="max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-700 pt-6 mt-8 flex items-center justify-between">
-        <button onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))} disabled={currentStep === 1} className="inline-flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="w-4 h-4" />Back</button>
-        <button onClick={() => setCurrentStep(prev => Math.min(6, prev + 1))} disabled={!canProceed() || currentStep === 6} className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Continue<ChevronRight className="w-4 h-4" /></button>
-      </div>
-    </div>
-  );
-}
                 </button>
                 <button
                   onClick={confirmGenerateContent}

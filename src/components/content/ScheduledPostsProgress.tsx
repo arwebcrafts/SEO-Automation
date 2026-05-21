@@ -140,9 +140,9 @@ export default function ScheduledPostsProgress() {
 
         {/* Timeout Message */}
         {isTimeout && (
-          <Alert variant="warning" title="Loading">
-            Taking longer than usual. Please wait...
-          </Alert>
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <p className="text-sm text-amber-700 dark:text-amber-300">Taking longer than usual. Please wait...</p>
+          </div>
         )}
 
         {/* Filter Bar Skeleton */}
@@ -302,15 +302,9 @@ export default function ScheduledPostsProgress() {
       </div>
 
       {error && (
-        <Alert variant="error" title="Error" onClose={() => setError(null)}>
-          <div className="flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={loadScheduledPosts}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </Alert>
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        </div>
       )}
 
       {/* Posts List */}

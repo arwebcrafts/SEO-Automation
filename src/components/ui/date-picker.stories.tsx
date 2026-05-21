@@ -52,7 +52,7 @@ export const Range: Story = {
         mode="range"
         selected={range?.from}
         onSelect={(date) => {
-          if (date && 'from' in date) {
+          if (date && 'from' in date && 'to' in date) {
             setRange(date as { from: Date; to: Date });
           }
         }}
