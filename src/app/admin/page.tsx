@@ -92,12 +92,6 @@ export default function AdminPage() {
   const [showUserDetail, setShowUserDetail] = useState(false);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  useEffect(() => {
     if (isSignedIn) {
       if (activeTab === "users") {
         fetchUsers();

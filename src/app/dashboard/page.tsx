@@ -6,12 +6,16 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { NoDomainOnboarding } from "@/components/dashboard/NoDomainOnboarding";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { ThingsToDo } from "@/components/dashboard/ThingsToDo";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth, useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Calendar,
   TrendingUp,
   BarChart3,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -27,9 +31,16 @@ interface RecentAudit {
 export default function DashboardPage() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
+  const router = useRouter();
   const [recentAudits, setRecentAudits] = useState<RecentAudit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasDomain, setHasDomain] = useState(false);
+  const [contentDraftsCount, setContentDraftsCount] = useState(0);
+  const [scheduledPostsCount, setScheduledPostsCount] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isWordPressConnected, setIsWordPressConnected] = useState(false);
+  const [hasGeneratedArticle, setHasGeneratedArticle] = useState(false);
+  const [hasScheduledPost, setHasScheduledPost] = useState(false);
 
   useEffect(() => {
     const fetchRecentAudits = async () => {
@@ -39,36 +50,136 @@ export default function DashboardPage() {
           const data = await res.json();
           setRecentAudits(data.audits?.slice(0, 5) || []);
           setHasDomain(data.audits?.length > 0);
+          setFetchError(null);
+        } else {
+          throw new Error(`Failed to load audit history (${res.status})`);
         }
       } catch (error) {
         console.error("Error fetching recent audits:", error);
+        setFetchError("Could not load your dashboard data. Please refresh.");
       } finally {
         setLoading(false);
       }
     };
 
+    const fetchContentStats = async () => {
+      try {
+        // Fetch draft count
+        const draftsRes = await fetch("/api/content/history?status=draft&limit=1");
+        if (draftsRes.ok) {
+          const draftsData = await draftsRes.json();
+          setContentDraftsCount(draftsData.total || draftsData.count || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching content drafts:", error);
+      }
+
+      try {
+        // Fetch scheduled posts count
+        const scheduledRes = await fetch("/api/scheduled-posts?status=scheduled&limit=1");
+        if (scheduledRes.ok) {
+          const scheduledData = await scheduledRes.json();
+          setScheduledPostsCount(scheduledData.total || scheduledData.count || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching scheduled posts:", error);
+      }
+    };
+
+    const fetchOnboardingStatus = async () => {
+      try {
+        const wpRes = await fetch("/api/wordpress");
+        if (wpRes.ok) {
+          const wpData = await wpRes.json();
+          setIsWordPressConnected(!!(wpData.siteUrl || wpData.connected));
+        }
+      } catch { /* silent — non-critical */ }
+
+      try {
+        const historyRes = await fetch("/api/content/history?limit=1");
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          const items = historyData.items || historyData.articles || [];
+          setHasGeneratedArticle(items.length > 0);
+        }
+      } catch { /* silent */ }
+
+      try {
+        const scheduledRes = await fetch("/api/scheduled-posts?limit=1");
+        if (scheduledRes.ok) {
+          const scheduledData = await scheduledRes.json();
+          const items = scheduledData.posts || scheduledData.items || [];
+          setHasScheduledPost(items.length > 0);
+        }
+      } catch { /* silent */ }
+    };
+
     if (isSignedIn) {
       fetchRecentAudits();
+      fetchContentStats();
+      fetchOnboardingStatus();
     }
   }, [isSignedIn]);
 
   const handleAddDomain = (domain: string) => {
-    // TODO: Implement domain addition logic
-    console.log("Adding domain:", domain);
     setHasDomain(true);
+    // Navigate to audit form with the domain pre-filled
+    router.push(`/audits/new?url=${encodeURIComponent(domain)}`);
   };
 
   const thingsToDoTasks = [
-    { id: "add-website", label: "Add your first website", completed: hasDomain },
-    { id: "run-audit", label: "Run your first audit", completed: recentAudits.length > 0 },
-    { id: "connect-wordpress", label: "Connect WordPress", completed: false },
-    { id: "generate-article", label: "Generate your first AI article", completed: false },
-    { id: "schedule-post", label: "Schedule your first post", completed: false },
+    {
+      id: "add-website",
+      label: "Add your first website",
+      completed: hasDomain,
+      action: "/settings?tab=sites"
+    },
+    {
+      id: "run-audit",
+      label: "Run your first audit",
+      completed: recentAudits.length > 0,
+      action: "/audits/new"
+    },
+    {
+      id: "connect-wordpress",
+      label: "Connect WordPress",
+      completed: isWordPressConnected,
+      action: "/settings?tab=wordpress"
+    },
+    {
+      id: "generate-article",
+      label: "Generate your first AI article",
+      completed: hasGeneratedArticle,
+      action: "/content/production"
+    },
+    {
+      id: "schedule-post",
+      label: "Schedule your first post",
+      completed: hasScheduledPost,
+      action: "/content/calendar"
+    },
   ];
 
   const handleTaskClick = (taskId: string) => {
-    // TODO: Implement task navigation
-    console.log("Task clicked:", taskId);
+    switch (taskId) {
+      case "add-website":
+        router.push("/settings?tab=sites");
+        break;
+      case "run-audit":
+        router.push("/audits/new");
+        break;
+      case "connect-wordpress":
+        router.push("/settings?tab=wordpress");
+        break;
+      case "generate-article":
+        router.push("/content/production");
+        break;
+      case "schedule-post":
+        router.push("/content/calendar");
+        break;
+      default:
+        break;
+    }
   };
 
   // Show onboarding if no domain
@@ -89,12 +200,31 @@ export default function DashboardPage() {
             Welcome back, {user?.firstName || "there"} 👋
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
-            {hasDomain 
+            {hasDomain
               ? `Here's a snapshot of your SEO health`
               : "Here's an overview of your SEO activity"
             }
           </p>
         </div>
+
+        {/* Error Banner */}
+        {fetchError && (
+          <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{fetchError}</span>
+            <button
+              onClick={() => {
+                setLoading(true);
+                setFetchError(null);
+                fetchRecentAudits();
+              }}
+              className="ml-auto flex items-center gap-1.5 text-red-600 hover:text-red-800 font-medium"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -108,6 +238,7 @@ export default function DashboardPage() {
             }}
             icon={TrendingUp}
             href="/history?tab=audits"
+            loading={loading}
           />
           <StatCard
             label="SEO Score"
@@ -128,28 +259,31 @@ export default function DashboardPage() {
             } : undefined}
             icon={BarChart3}
             href="/history?tab=audits"
+            loading={loading}
           />
           <StatCard
             label="Content Drafts"
-            value={0}
+            value={contentDraftsCount}
             delta={{
-              value: "0",
-              trend: "neutral",
+              value: contentDraftsCount > 0 ? `${contentDraftsCount}` : "0",
+              trend: contentDraftsCount > 0 ? "up" : "neutral",
               period: "active"
             }}
             icon={FileText}
-            href="/content-strategy?view=drafts"
+            href="/content/drafts"
+            loading={loading}
           />
           <StatCard
             label="Scheduled Posts"
-            value={0}
+            value={scheduledPostsCount}
             delta={{
-              value: "0",
-              trend: "neutral",
+              value: scheduledPostsCount > 0 ? `${scheduledPostsCount}` : "0",
+              trend: scheduledPostsCount > 0 ? "up" : "neutral",
               period: "upcoming"
             }}
             icon={Calendar}
-            href="/content-strategy?view=calendar"
+            href="/content/calendar"
+            loading={loading}
           />
         </div>
 
@@ -182,5 +316,9 @@ export default function DashboardPage() {
     </div>
   );
 
-  return <SidebarLayout>{dashboardContent}</SidebarLayout>;
+  return (
+    <ErrorBoundary>
+      <SidebarLayout>{dashboardContent}</SidebarLayout>
+    </ErrorBoundary>
+  );
 }

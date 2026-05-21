@@ -12,11 +12,11 @@ export function Header() {
 
   const navItems = [
     { href: "/history", label: "History", icon: FileText },
-    { href: "/content-strategy", label: "Content Strategy", icon: Zap },
-    { href: "/auto-content", label: "Auto-Content", icon: Zap },
-    { href: "/drafts", label: "Drafts", icon: Edit3 },
-    { href: "/calendar", label: "Calendar", icon: Calendar },
-    { href: "/editor", label: "Editor", icon: Edit3 },
+    { href: "/content/analysis", label: "Content Strategy", icon: Zap },
+    { href: "/content/auto-pilot", label: "Auto-Content", icon: Zap },
+    { href: "/content/drafts", label: "Drafts", icon: Edit3 },
+    { href: "/content/calendar", label: "Calendar", icon: Calendar },
+    { href: "/content/production", label: "Editor", icon: Edit3 },
     { href: "/gbp-audit", label: "GBP Audit", icon: MapPin },
   ];
 

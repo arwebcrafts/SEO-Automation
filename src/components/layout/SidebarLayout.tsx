@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { TopHeader } from "./TopHeader";
 import Sidebar from "./Sidebar";
 import OnboardingWalkthrough from "@/components/onboarding/OnboardingWalkthrough";
 import WebsiteSwitcher from "@/components/content/WebsiteSwitcher";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useContentStrategy, Website } from "@/contexts/ContentStrategyContext";
 import { Globe, Menu, X } from "lucide-react";
 
@@ -15,31 +17,30 @@ interface SidebarLayoutProps {
   contentGapsCount?: number;
 }
 
-export default function SidebarLayout({ 
-  children, 
+export default function SidebarLayout({
+  children,
   currentDomain,
   healthScore,
-  contentGapsCount 
+  contentGapsCount
 }: SidebarLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  
-  const { 
-    activeWebsite, 
-    setActiveWebsite, 
-    isWebsiteSwitcherOpen, 
-    openWebsiteSwitcher, 
+  const router = useRouter();
+
+  const {
+    activeWebsite,
+    setActiveWebsite,
+    isWebsiteSwitcherOpen,
+    openWebsiteSwitcher,
     closeWebsiteSwitcher,
-    resetStrategy 
+    resetStrategy
   } = useContentStrategy();
 
   const handleWebsiteSelect = (website: Website) => {
     setActiveWebsite(website);
     closeWebsiteSwitcher();
     resetStrategy();
-    // Navigate to analysis view for the new website
-    // Note: This will be updated to /content/analysis after route restructuring
-    window.location.href = '/content-strategy?view=analysis';
+    router.push('/content/analysis');
   };
 
   return (
@@ -90,7 +91,7 @@ export default function SidebarLayout({
         <div className="hidden lg:block sticky top-0 z-40">
           <TopHeader />
         </div>
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
       {/* Onboarding Walkthrough */}

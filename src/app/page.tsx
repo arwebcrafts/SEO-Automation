@@ -4,7 +4,7 @@ import { Header } from "@/components/shared/header";
 import { Footer } from "@/components/shared/footer";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
   BarChart3,
@@ -27,6 +27,7 @@ import Link from "next/link";
 export default function HomePage() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
+  const [auditUrl, setAuditUrl] = useState("");
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
@@ -152,11 +153,26 @@ export default function HomePage() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="text"
+                    value={auditUrl}
+                    onChange={(e) => setAuditUrl(e.target.value)}
                     placeholder="https://example.com"
                     className="flex-1 px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const target = isSignedIn
+                          ? `/audits/new${auditUrl ? `?url=${encodeURIComponent(auditUrl)}` : ""}`
+                          : "/sign-up";
+                        router.push(target);
+                      }
+                    }}
                   />
                   <button
-                    onClick={() => window.location.href = '/sign-up'}
+                    onClick={() => {
+                      const target = isSignedIn
+                        ? `/audits/new${auditUrl ? `?url=${encodeURIComponent(auditUrl)}` : ""}`
+                        : "/sign-up";
+                      router.push(target);
+                    }}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold"
                   >
                     Analyze
@@ -186,7 +202,7 @@ export default function HomePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Link href="/sign-up" className="group">
+              <Link href={isSignedIn ? "/content/analysis" : "/sign-up"} className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-blue-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
@@ -201,7 +217,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/sign-up" className="group relative">
+              <Link href={isSignedIn ? "/content/production" : "/sign-up"} className="group relative">
                 <div className="absolute -top-3 -right-3 px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-full z-10 shadow-lg animate-pulse">NEW</div>
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-purple-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full"></div>
@@ -217,7 +233,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/sign-up" className="group">
+              <Link href={isSignedIn ? "/content/drafts" : "/sign-up"} className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-amber-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-amber-500/30">
@@ -232,7 +248,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/sign-up" className="group">
+              <Link href={isSignedIn ? "/content/calendar" : "/sign-up"} className="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-green-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/30">

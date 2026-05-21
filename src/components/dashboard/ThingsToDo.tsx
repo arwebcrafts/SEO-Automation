@@ -16,6 +16,7 @@ interface ThingsToDoProps {
 export function ThingsToDo({ tasks, onTaskClick }: ThingsToDoProps) {
   const completedCount = tasks.filter((t) => t.completed).length;
   const progress = (completedCount / tasks.length) * 100;
+  const allComplete = tasks.every((t) => t.completed);
 
   const getIcon = (taskId: string) => {
     switch (taskId) {
@@ -53,6 +54,20 @@ export function ThingsToDo({ tasks, onTaskClick }: ThingsToDoProps) {
         </div>
       </div>
 
+      {allComplete && (
+        <div className={`transition-all duration-500 opacity-100 translate-y-0`}>
+          <div className="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 text-center">
+            <div className="text-2xl mb-2">🎉</div>
+            <p className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
+              You're all set up!
+            </p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
+              Your SEO Hub is fully configured and ready to use.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {tasks.map((task) => {
           const Icon = getIcon(task.id);
@@ -60,7 +75,7 @@ export function ThingsToDo({ tasks, onTaskClick }: ThingsToDoProps) {
             <button
               key={task.id}
               onClick={() => onTaskClick(task.id)}
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left group"
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -86,8 +101,8 @@ export function ThingsToDo({ tasks, onTaskClick }: ThingsToDoProps) {
                   {task.label}
                 </p>
               </div>
-              {!task.completed && task.action && (
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+              {!task.completed && (
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
               )}
             </button>
           );

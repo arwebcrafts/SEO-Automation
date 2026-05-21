@@ -130,6 +130,13 @@ export default function Sidebar({
   contentGapsCount,
 }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(["content", "audits"]);
+  const [dismissedBadges, setDismissedBadges] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("dismissed-badges") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const pathname = usePathname();
   const router = useRouter();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -217,6 +224,8 @@ export default function Sidebar({
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
+        role="complementary"
+        aria-label="Site navigation sidebar"
         className={cn(
           "fixed top-0 left-0 h-full bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-50 transition-all duration-300 flex flex-col",
           isCollapsed ? "w-16" : "w-64",
@@ -248,16 +257,34 @@ export default function Sidebar({
         {/* Domain Switcher */}
         {!isCollapsed && (
           <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
-            <button
-              onClick={handleNewStrategy}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
-            >
-              <Globe className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
-                {currentDomain || activeWebsite?.name || "Select Domain"}
-              </span>
-              <ChevronDown className="w-4 h-4 text-slate-500 ml-auto" />
-            </button>
+            {currentDomain || activeWebsite?.name ? (
+              // Domain is selected — show switcher
+              <button
+                onClick={handleNewStrategy}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                title="Switch domain"
+              >
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {(currentDomain || activeWebsite?.name || "?")[0].toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate flex-1 text-left">
+                  {currentDomain || activeWebsite?.name}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              </button>
+            ) : (
+              // No domain — show "Add website" CTA
+              <button
+                onClick={handleNewStrategy}
+                className="w-full flex items-center gap-2 px-3 py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg transition-colors group"
+                title="Add your first website"
+              >
+                <Plus className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                <span className="text-sm font-medium text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  Add your website
+                </span>
+              </button>
+            )}
           </div>
         )}
 
@@ -269,15 +296,21 @@ export default function Sidebar({
               "w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg",
               isCollapsed && "px-2"
             )}
-            title={isCollapsed ? "New Strategy" : undefined}
+            title="Start a new content strategy for a domain"
+            aria-label="Create new content strategy"
           >
             <Plus className="w-5 h-5" />
             {!isCollapsed && <span>New Strategy</span>}
           </button>
+          {!isCollapsed && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-center mt-1.5 px-1">
+              AI content plan for your domain
+            </p>
+          )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-2 overflow-y-auto" aria-label="Main application navigation">
           {navSections.map((section) => {
             const SectionIcon = section.icon;
             const isExpanded = expandedSections.includes(section.id);
@@ -297,6 +330,9 @@ export default function Sidebar({
                       isCollapsed && "justify-center"
                     )}
                     title={isCollapsed ? section.label : undefined}
+                    aria-expanded={isExpanded}
+                    aria-controls={`nav-section-${section.id}`}
+                    aria-label={`${section.label} navigation section`}
                   >
                     <SectionIcon className={cn("w-5 h-5 flex-shrink-0", hasActiveItem && "text-indigo-600 dark:text-indigo-400")} />
                     {!isCollapsed && (
@@ -317,10 +353,13 @@ export default function Sidebar({
                 
                 {/* Section Items */}
                 {(!section.collapsible || isExpanded) && (
-                  <div className={cn(
-                    "space-y-1",
-                    section.collapsible && !isCollapsed && "ml-3 pl-3 border-l-2 border-slate-200 dark:border-slate-700"
-                  )}>
+                  <div
+                    id={`nav-section-${section.id}`}
+                    className={cn(
+                      "space-y-1",
+                      section.collapsible && !isCollapsed && "ml-3 pl-3 border-l-2 border-slate-200 dark:border-slate-700"
+                    )}
+                  >
                     {section.items.filter(item => !item.hidden).map((item) => {
                       const Icon = item.icon;
                       const active = isActive(item);
@@ -329,6 +368,7 @@ export default function Sidebar({
                         <Link
                           key={item.id}
                           href={item.href}
+                          aria-current={active ? "page" : undefined}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm",
                             active
@@ -341,9 +381,22 @@ export default function Sidebar({
                           {!isCollapsed && (
                             <>
                               <span className="flex-1">{item.label}</span>
-                              {item.badge && (
-                                <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full">
-                                  {item.badge}
+                              {item.badge && !dismissedBadges.includes(item.id) && (
+                                <span
+                                  className="relative inline-flex items-center cursor-pointer"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const updated = [...dismissedBadges, item.id];
+                                    setDismissedBadges(updated);
+                                    localStorage.setItem("dismissed-badges", JSON.stringify(updated));
+                                  }}
+                                  title="Click to dismiss"
+                                >
+                                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 opacity-60 animate-ping" style={{ animationDuration: '2s' }} />
+                                  <span className="relative px-2 py-0.5 text-xs bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full font-semibold">
+                                    {item.badge}
+                                  </span>
                                 </span>
                               )}
                             </>
