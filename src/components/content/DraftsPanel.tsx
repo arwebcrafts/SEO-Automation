@@ -23,6 +23,8 @@ import {
   Tag,
   User,
   Globe,
+  Check,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useContentStrategy } from "@/contexts/ContentStrategyContext";
@@ -56,6 +58,7 @@ export default function DraftsPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const { activeWebsite, openWebsiteSwitcher } = useContentStrategy();
 
   useEffect(() => {
@@ -130,6 +133,50 @@ export default function DraftsPanel() {
     navigator.clipboard.writeText(content.replace(/<[^>]*>/g, ""));
   };
 
+  const handleSelectDraft = (draftId: string) => {
+    setSelectedDrafts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(draftId)) {
+        newSet.delete(draftId);
+      } else {
+        newSet.add(draftId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedDrafts.size === filteredDrafts.length) {
+      setSelectedDrafts(new Set());
+    } else {
+      setSelectedDrafts(new Set(filteredDrafts.map(d => d.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDrafts.size === 0) return;
+    if (!confirm(`Delete ${selectedDrafts.size} selected draft${selectedDrafts.size > 1 ? 's' : ''}?`)) return;
+
+    try {
+      const response = await fetch('/api/posts/bulk-delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedDrafts) }),
+      });
+
+      if (response.ok) {
+        setDrafts(prev => prev.filter(d => !selectedDrafts.has(d.id)));
+        setSelectedDrafts(new Set());
+      }
+    } catch (error) {
+      console.error('Error deleting drafts:', error);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedDrafts(new Set());
+  };
+
   const statusCounts = {
     all: drafts.length,
     PENDING: drafts.filter(d => d.status === "PENDING").length,
@@ -197,9 +244,44 @@ export default function DraftsPanel() {
         })}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedDrafts.size > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {selectedDrafts.size} draft{selectedDrafts.size > 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-sm text-blue-700 dark:text-blue-300 hover:underline"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Search and Filters */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={selectedDrafts.size === filteredDrafts.length && filteredDrafts.length > 0}
+              onChange={handleSelectAll}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-slate-600 dark:text-slate-400">Select All</span>
+          </div>
           <div className="flex-1 min-w-[250px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -262,8 +344,20 @@ export default function DraftsPanel() {
             return (
               <div
                 key={draft.id}
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all group"
+                className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-all group ${
+                  selectedDrafts.has(draft.id) ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200 dark:border-slate-700'
+                }`}
               >
+                {/* Selection Checkbox */}
+                <div className="absolute top-3 left-3 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedDrafts.has(draft.id)}
+                    onChange={() => handleSelectDraft(draft.id)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
                 {/* Featured Image */}
                 {draft.featuredImage || draft.imageUrl ? (
                   <div className="relative h-48 overflow-hidden">
@@ -415,6 +509,14 @@ export default function DraftsPanel() {
           <table className="w-full">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedDrafts.size === filteredDrafts.length && filteredDrafts.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Content</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Metadata</th>
@@ -426,7 +528,17 @@ export default function DraftsPanel() {
               {filteredDrafts.map((draft) => {
                 const statusConfig = getStatusConfig(draft.status);
                 return (
-                  <tr key={draft.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <tr key={draft.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${
+                    selectedDrafts.has(draft.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`}>
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedDrafts.has(draft.id)}
+                        onChange={() => handleSelectDraft(draft.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex items-start gap-3">
                         {/* Thumbnail */}

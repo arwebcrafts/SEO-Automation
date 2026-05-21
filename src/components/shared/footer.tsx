@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, Zap, FileText, Calendar, Edit3, MapPin, Mail, Shield, Heart } from "lucide-react";
+import { Globe, Zap, FileText, Calendar, Edit3, MapPin, Mail, Shield, Heart } from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -7,7 +7,7 @@ export function Footer() {
   const footerSections = [
     {
       title: "Product",
-      icon: Search,
+      icon: Globe,
       links: [
         { href: "/", label: "SEO Audit" },
         { href: "/content-strategy", label: "Content Strategy" },
@@ -38,8 +38,8 @@ export function Footer() {
       title: "Legal",
       icon: FileText,
       links: [
-        { href: "#", label: "Privacy Policy" },
-        { href: "#", label: "Terms of Service" },
+        { href: "/privacy", label: "Privacy Policy" },
+        { href: "/terms", label: "Terms of Service" },
         { href: "#", label: "Cookie Policy" },
       ],
     },
@@ -56,11 +56,11 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2.5 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                <Search className="w-5 h-5 text-white" />
+                <Globe className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-lg leading-tight">SEO</span>
-                <span className="text-xs text-slate-400 -mt-0.5">Audit Tool</span>
+                <span className="text-xs text-slate-400 -mt-0.5">Hub</span>
               </div>
             </Link>
             <p className="text-slate-400 text-sm mb-4">
@@ -100,7 +100,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-slate-800">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-slate-400 text-sm">
-              &copy; {currentYear} SEO Audit Tool. All rights reserved.
+              &copy; {currentYear} SEO Hub. All rights reserved.
             </p>
             <p className="text-slate-500 text-sm flex items-center gap-1">
               Made with <Heart className="w-4 h-4 text-red-500" /> for SEO professionals

@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Header } from "@/components/shared/header";
-import { Footer } from "@/components/shared/footer";
+import SidebarLayout from "@/components/layout/SidebarLayout";
 import { GBPReportHeader } from "@/components/gbp-audit/gbp-report-header";
 import { GBPCategorySection } from "@/components/gbp-audit/gbp-category-section";
 import { GBPRecommendations } from "@/components/gbp-audit/gbp-recommendations";
-import { GBPSidebarNav } from "@/components/gbp-audit/gbp-sidebar-nav";
 import { Loader2, ClipboardList, CheckCircle2, XCircle, Link2, Sparkles } from "lucide-react";
 
 interface CheckItem {
@@ -444,11 +442,9 @@ export default function GBPAuditPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      {auditResult && <GBPSidebarNav />}
-      <main className="flex-1 py-8">
-        <div className={`container mx-auto px-4 ${auditResult ? "lg:ml-36 lg:mr-4 lg:max-w-5xl" : "max-w-3xl"}`}>
+    <SidebarLayout>
+      <main className="py-8">
+        <div className={`container mx-auto px-4 ${auditResult ? "max-w-5xl" : "max-w-3xl"}`}>
           
           {!auditResult && (
             <>
@@ -761,7 +757,6 @@ export default function GBPAuditPage() {
           )}
         </div>
       </main>
-      <Footer />
-    </div>
+    </SidebarLayout>
   );
 }

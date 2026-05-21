@@ -311,25 +311,45 @@ export default function SidebarLayout({
                 {/* Collapsed mode - show only section icon */}
                 {isCollapsed && (
                   <div className="space-y-1">
-                    {section.items.filter(item => !item.hidden).slice(0, 1).map((item) => {
-                      const Icon = item.icon;
-                      const active = isActive(item);
-                      return (
-                        <Link
-                          key={item.id}
-                          href={item.href}
-                          onClick={() => handleNavClick(item)}
-                          className={`flex items-center justify-center p-2 rounded-lg transition-all ${
-                            active
-                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                          title={item.label}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </Link>
-                      );
-                    })}
+                    {isCollapsed ? (
+                      <div className="flex flex-col gap-1 px-2 py-4">
+                        {section.items.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                              isActive(item)
+                                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            }`}
+                            title={item.label}
+                          >
+                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                            {!isCollapsed && <span>{item.label}</span>}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      section.items.filter(item => !item.hidden).slice(0, 1).map((item) => {
+                        const Icon = item.icon;
+                        const active = isActive(item);
+                        return (
+                          <Link
+                            key={item.id}
+                            href={item.href}
+                            onClick={() => handleNavClick(item)}
+                            className={`flex items-center justify-center p-2 rounded-lg transition-all ${
+                              active
+                                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            }`}
+                            title={item.label}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </Link>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>

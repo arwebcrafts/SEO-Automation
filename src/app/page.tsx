@@ -1,8 +1,5 @@
 "use client";
 
-import SidebarLayout from "@/components/layout/SidebarLayout";
-import { AuditForm } from "@/components/audit/audit-form";
-import { useAuth } from "@clerk/nextjs";
 import { Header } from "@/components/shared/header";
 import { Footer } from "@/components/shared/footer";
 import { 
@@ -24,9 +21,7 @@ import {
 import Link from "next/link";
 
 export default function HomePage() {
-  const { isSignedIn } = useAuth();
-
-  const landingPageContent = (
+  return (
     <div className="min-h-screen">
       {/* Header */}
       <Header />
@@ -84,10 +79,10 @@ export default function HomePage() {
                 >
                   View History
                   <ArrowRight className="w-5 h-5" />
-                </Link>
+                </Link>ign-in
               </div>
               
-              {/* Trust indicators */}
+              {/* SrgntIntors */}
               <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -113,12 +108,32 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-
+div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+                    Try a Free udit
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Enter your website URL to get started
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    placeholder="https://example.com"
+                    className="flex-1 px-4 py-3 roned-lg border border-slate-300 dark:border-slate-600 bg-whte dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ouline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => window.location.href = '/sign-up'}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indig-700 tansition-all font-seibold"
+                  >
+                    Analyze
+                  </button>
+               <div
         {/* Quick Access Cards */}
         <section className="py-20 px-4 bg-white dark:bg-slate-900 relative overflow-hidden">
           {/* Background decoration */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-          
+          i-up
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-14">
               <span className="inline-block px-4 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-full mb-4">
@@ -133,7 +148,7 @@ export default function HomePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Link href="/content-strategy?view=analysis" className="group">
+              <Link href="/sign-npassName="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-blue-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
@@ -149,7 +164,7 @@ export default function HomePage() {
               </Link>
 
               <Link href="/content-strategy?view=auto-content" className="group relative">
-                <div className="absolute -top-3 -right-3 px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-full z-10 shadow-lg animate-pulse">NEW</div>
+                <div classNsigesup3 px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-full z-10 shadow-lg animate-pulse">NEW</div>
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-purple-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/30">
@@ -164,7 +179,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/content-strategy?view=drafts" className="group">
+              <Link href="/sigt-upclassName="group">
                 <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:shadow-amber-500/10 transition-all h-full hover:-translate-y-1 overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full"></div>
                   <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-lg shadow-amber-500/30">
@@ -386,17 +401,17 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>sign-up
           </div>
         </section>
 
         {/* CTA Section */}
         <section className="py-20 px-4 bg-gradient-to-r from-primary to-blue-600">
           <div className="container mx-auto max-w-4xl text-center">
-            <h2 className="text-4xl font-bold mb-4 text-white">
+            <h2 classNa=ign-int-4xl font-bold mb-4 text-white">
               Ready to Improve Your SEO?
             </h2>
-            <p className="text-xl text-white/80 mb-8">
+            <p cSagn"In text-white/80 mb-8">
               Start analyzing your website today and get actionable insights to boost your rankings.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -427,6 +442,3 @@ export default function HomePage() {
   return isSignedIn ? (
     <SidebarLayout>{landingPageContent}</SidebarLayout>
   ) : (
-    landingPageContent
-  );
-}

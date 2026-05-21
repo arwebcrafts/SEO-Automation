@@ -243,15 +243,99 @@ export default function ContentStrategyDashboardV2({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[600px]">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            Analyzing Content...
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400">
-            AI is extracting insights from your website content
-          </p>
+      <div className="flex gap-8">
+        {/* Skeleton Navigation */}
+        <div className="w-48 flex-shrink-0 space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-10 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
+          ))}
+        </div>
+
+        {/* Skeleton Main Content */}
+        <div className="flex-1 space-y-8">
+          {/* Skeleton Overview Section */}
+          <section>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-48 mb-6 animate-pulse" />
+              
+              {/* Skeleton Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2 animate-pulse" />
+                    <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Skeleton Content Context */}
+              <div className="space-y-4">
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32 animate-pulse" />
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Skeleton Content Gaps Section */}
+          <section>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-40 mb-6 animate-pulse" />
+              
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg flex-shrink-0 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 animate-pulse" />
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Skeleton Keywords Section */}
+          <section>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-36 mb-6 animate-pulse" />
+              
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse" />
+                    <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse" />
+                    <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Skeleton AI Suggestions Section */}
+          <section>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-44 mb-6 animate-pulse" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-3 animate-pulse" />
+                    <div className="space-y-2 mb-4">
+                      {[...Array(2)].map((_, j) => (
+                        <div key={j} className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full animate-pulse" />
+                      ))}
+                    </div>
+                    <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     );
