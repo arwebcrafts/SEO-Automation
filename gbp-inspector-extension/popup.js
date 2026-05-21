@@ -47,8 +47,6 @@ function switchTab(tab) {
     loadCompetitorsContent();
   } else if (tab === 'nap') {
     loadNAPContent();
-  } else if (tab === 'website') {
-    loadWebsiteSEOContent();
   }
 }
 
@@ -57,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-audit-btn').addEventListener('click', () => switchTab('audit'));
   document.getElementById('tab-competitors-btn').addEventListener('click', () => switchTab('competitors'));
   document.getElementById('tab-nap-btn').addEventListener('click', () => switchTab('nap'));
-  document.getElementById('tab-website-btn').addEventListener('click', () => switchTab('website'));
   
   loadCompetitorsFromStorage();
   checkCurrentTab();
