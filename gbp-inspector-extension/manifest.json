@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "SEO AutoFix GBP Inspector",
+  "version": "1.0.0",
+  "description": "Extract GBP categories and get quick completeness scores from Google Maps listings",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.google.com/*",
+    "https://maps.google.com/*",
+    "https://seo-try.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/maps/*",
+        "https://maps.google.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

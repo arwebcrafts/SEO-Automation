@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GBP Inspector</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 400px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .container {
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      color: white;
+    }
+    
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-detected {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+    
+    .status-not-detected {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .business-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    
+    .category-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .category-item:last-child {
+      border-bottom: none;
+    }
+    
+    .category-label {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    .category-value {
+      font-size: 13px;
+      color: #1f2937;
+      font-weight: 600;
+      flex: 1;
+    }
+    
+    .score-display {
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .score-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .score-high {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    .score-medium {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .score-low {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    .score-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    
+    .score-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+    
+    .checklist {
+      margin-top: 12px;
+    }
+    
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+    
+    .checklist-item.pass {
+      color: #16a34a;
+    }
+    
+    .checklist-item.fail {
+      color: #dc2626;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .error {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 40px 20px;
+      color: white;
+    }
+    
+    .no-data-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    
+    .no-data p {
+      font-size: 13px;
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 GBP Inspector</h1>
+      <p>Extract categories & quick GBP score</p>
+    </div>
+    
+    <div id="content">
+      <!-- Content will be injected here -->
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
