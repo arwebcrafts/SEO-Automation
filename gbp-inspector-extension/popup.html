@@ -349,6 +349,46 @@
       opacity: 0.9;
       line-height: 1.5;
     }
+    
+    .nap-profile {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .nap-profile-name {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    
+    .nap-field {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+    
+    .nap-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .nap-input {
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    
+    .nap-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -361,6 +401,7 @@
     <div class="tabs">
       <button class="tab-btn active" id="tab-audit-btn">Audit</button>
       <button class="tab-btn" id="tab-competitors-btn">Competitors</button>
+      <button class="tab-btn" id="tab-nap-btn">NAP Profiles</button>
     </div>
     
     <div id="audit-content" class="tab-content active">
@@ -369,6 +410,10 @@
     
     <div id="competitors-content" class="tab-content">
       <!-- Competitors content will be injected here -->
+    </div>
+    
+    <div id="nap-content" class="tab-content">
+      <!-- NAP Profiles content will be injected here -->
     </div>
   </div>
   

@@ -6,13 +6,20 @@ let businessData = null;
 let competitors = [];
 let currentTab = 'audit';
 let originalBusinessData = null; // Store the business being compared against
+let napProfiles = []; // Store NAP profiles
 
 
 // Load competitors from storage
 function loadCompetitorsFromStorage() {
-  chrome.storage.local.get(['competitors'], (result) => {
+  chrome.storage.local.get(['competitors', 'originalBusiness', 'napProfiles'], (result) => {
     if (result.competitors) {
       competitors = result.competitors;
+    }
+    if (result.originalBusiness) {
+      originalBusinessData = result.originalBusiness;
+    }
+    if (result.napProfiles) {
+      napProfiles = result.napProfiles;
     }
   });
 }
@@ -38,6 +45,8 @@ function switchTab(tab) {
     loadAuditContent();
   } else if (tab === 'competitors') {
     loadCompetitorsContent();
+  } else if (tab === 'nap') {
+    loadNAPContent();
   }
 }
 
@@ -45,6 +54,7 @@ function switchTab(tab) {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-audit-btn').addEventListener('click', () => switchTab('audit'));
   document.getElementById('tab-competitors-btn').addEventListener('click', () => switchTab('competitors'));
+  document.getElementById('tab-nap-btn').addEventListener('click', () => switchTab('nap'));
   
   loadCompetitorsFromStorage();
   checkCurrentTab();
@@ -84,6 +94,29 @@ document.addEventListener('click', (e) => {
       copyToClipboard(businessData.placeId, button);
     } else if (copyType === 'cid' && businessData.cid) {
       copyToClipboard(businessData.cid, button);
+    }
+  } else if (buttonText.includes('Add NAP Profile')) {
+    showNAPForm();
+  } else if (buttonText === 'Save Profile') {
+    const name = document.getElementById('nap-name').value;
+    const address = document.getElementById('nap-address').value;
+    const phone = document.getElementById('nap-phone').value;
+    const website = document.getElementById('nap-website').value;
+    
+    if (!name || !address || !phone) {
+      alert('Please fill in at least Name, Address, and Phone');
+      return;
+    }
+    
+    saveNAPProfile(name, address, phone, website);
+  } else if (buttonText === 'Cancel') {
+    loadNAPContent();
+  } else if (buttonText.includes('Import Current Business NAP')) {
+    importCurrentBusinessNAP();
+  } else if (buttonText === 'Delete') {
+    const deleteIndex = button.getAttribute('data-delete-nap');
+    if (deleteIndex !== null) {
+      deleteNAPProfile(parseInt(deleteIndex));
     }
   }
 });
@@ -168,6 +201,41 @@ function loadCompetitorsContent() {
   }
   
   displayCompetitorsContent(displayData, container);
+}
+
+function loadNAPContent() {
+  const container = document.getElementById('nap-content');
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">📋 NAP Profiles</div>
+      <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">Store business Name, Address, Phone for citation building</p>
+      
+      ${napProfiles.length === 0 ? `
+        <div style="text-align: center; padding: 20px; color: #6b7280;">
+          <p>No NAP profiles saved yet.</p>
+        </div>
+      ` : napProfiles.map((profile, index) => `
+        <div class="nap-profile">
+          <div class="nap-profile-name">${escapeHtml(profile.name)}</div>
+          <div class="nap-field"><strong>Address:</strong> ${escapeHtml(profile.address)}</div>
+          <div class="nap-field"><strong>Phone:</strong> ${escapeHtml(profile.phone)}</div>
+          <div class="nap-field"><strong>Website:</strong> ${escapeHtml(profile.website)}</div>
+          <button style="margin-top: 8px; padding: 4px 8px; font-size: 11px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer;" data-delete-nap="${index}">Delete</button>
+        </div>
+      `).join('')}
+      
+      <button class="btn btn-secondary" style="margin-top: 12px;">➕ Add NAP Profile</button>
+    </div>
+    
+    ${businessData ? `
+      <div class="card">
+        <div class="card-title">📥 Import from Current Business</div>
+        <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">Import NAP data from the current GBP listing</p>
+        <button class="btn btn-secondary">Import Current Business NAP</button>
+      </div>
+    ` : ''}
+  `;
 }
 
 function displayAuditContent(data, container) {
@@ -582,6 +650,67 @@ function copyToClipboard(text, button) {
     console.error('Failed to copy:', err);
     alert('Failed to copy to clipboard');
   });
+}
+
+// Show NAP form
+function showNAPForm() {
+  const container = document.getElementById('nap-content');
+  
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">➕ Add NAP Profile</div>
+      <div class="nap-form">
+        <input type="text" class="nap-input" id="nap-name" placeholder="Business Name" />
+        <input type="text" class="nap-input" id="nap-address" placeholder="Address" />
+        <input type="text" class="nap-input" id="nap-phone" placeholder="Phone Number" />
+        <input type="text" class="nap-input" id="nap-website" placeholder="Website" />
+        <button class="btn btn-primary" style="margin-top: 8px;">Save Profile</button>
+        <button class="btn btn-secondary" style="margin-top: 8px;">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+
+// Save NAP profile
+function saveNAPProfile(name, address, phone, website) {
+  const profile = {
+    name: name.trim(),
+    address: address.trim(),
+    phone: phone.trim(),
+    website: website.trim()
+  };
+  
+  napProfiles.push(profile);
+  chrome.storage.local.set({ napProfiles });
+  loadNAPContent();
+}
+
+// Delete NAP profile
+function deleteNAPProfile(index) {
+  if (confirm('Are you sure you want to delete this NAP profile?')) {
+    napProfiles.splice(index, 1);
+    chrome.storage.local.set({ napProfiles });
+    loadNAPContent();
+  }
+}
+
+// Import current business NAP
+function importCurrentBusinessNAP() {
+  if (!businessData || !businessData.detected) {
+    alert('No business data available to import.');
+    return;
+  }
+  
+  const profile = {
+    name: businessData.businessName,
+    address: businessData.address || '',
+    phone: businessData.phone || '',
+    website: businessData.website || ''
+  };
+  
+  napProfiles.push(profile);
+  chrome.storage.local.set({ napProfiles });
+  loadNAPContent();
 }
 
 // Escape HTML to prevent XSS
