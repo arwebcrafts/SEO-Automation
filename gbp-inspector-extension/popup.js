@@ -244,21 +244,26 @@ function loadNAPContent() {
 }
 
 function loadWebsiteSEOContent() {
+  console.log('loadWebsiteSEOContent called');
   const container = document.getElementById('website-content');
+  console.log('website-content container:', container);
   
   container.innerHTML = `
-    <div class="card">
-      <div class="card-title">🌐 Website Local SEO Checker</div>
-      <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">Check the current website for local SEO elements</p>
-      
-      <button class="btn btn-primary" id="run-seo-check-btn">Run Website SEO Check</button>
-      <div id="seo-check-status" style="margin-top: 8px; font-size: 12px; color: #6b7280;"></div>
+    <div style="background:white; border-radius:12px; padding:16px; margin-bottom:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+      <div style="font-weight:700; color:#1f2937; margin-bottom:8px;">🌐 Website Local SEO Checker</div>
+      <p style="font-size:12px; color:#6b7280; margin-bottom:12px;">Check this website for local SEO signals</p>
+      <button id="run-seo-check-btn" style="width:100%; padding:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Run Website SEO Check</button>
+      <div id="seo-check-status" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
     </div>
-    
-    <div id="website-seo-results" style="display: none;">
-      <!-- Results will be injected here -->
-    </div>
+    <div id="website-seo-results"></div>
   `;
+  
+  const btn = document.getElementById('run-seo-check-btn');
+  console.log('run-seo-check-btn found:', btn);
+  btn.addEventListener('click', () => {
+    console.log('Run Website SEO Check button clicked!');
+    runWebsiteSEOCheck();
+  });
 }
 
 function displayAuditContent(data, container) {
@@ -741,17 +746,23 @@ async function runWebsiteSEOCheck() {
   const statusDiv = document.getElementById('seo-check-status');
   const btn = document.getElementById('run-seo-check-btn');
   
+  console.log('runWebsiteSEOCheck called');
   if (statusDiv) statusDiv.textContent = 'Checking...';
   if (btn) btn.disabled = true;
   
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const tab = tabs[0];
+    
+    console.log('Active tab:', tab ? tab.url : 'none', 'id:', tab ? tab.id : 'none');
     
     if (!tab || !tab.url) {
       if (statusDiv) statusDiv.textContent = 'Error: No active tab found';
       if (btn) btn.disabled = false;
       return;
     }
+    
+    if (statusDiv) statusDiv.textContent = 'Running on: ' + tab.url.substring(0, 40) + '...';
     
     // Execute the check directly in the page context - no message passing needed
     const [{ result }] = await chrome.scripting.executeScript({
@@ -813,14 +824,23 @@ async function runWebsiteSEOCheck() {
       }
     });
     
+    console.log('executeScript result:', JSON.stringify(result));
+    
     if (result) {
+      console.log('hasLocalBusinessSchema:', result.hasLocalBusinessSchema);
+      console.log('hasPhone:', result.hasPhone);
+      console.log('hasAddress:', result.hasAddress);
+      console.log('hasName:', result.hasName);
+      console.log('hasMapsEmbed:', result.hasMapsEmbed);
+      console.log('hasGBPLink:', result.hasGBPLink);
       displayWebsiteSEOResults(result);
       if (statusDiv) statusDiv.textContent = '';
     } else {
+      console.warn('result is null/undefined');
       if (statusDiv) statusDiv.textContent = 'Error: No results returned';
     }
   } catch (error) {
-    console.error('Website SEO check error:', error);
+    console.error('Website SEO check error:', error.message, error.stack);
     if (statusDiv) statusDiv.textContent = 'Error: ' + error.message;
   } finally {
     if (btn) btn.disabled = false;
