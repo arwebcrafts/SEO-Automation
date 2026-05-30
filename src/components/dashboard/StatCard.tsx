@@ -18,6 +18,8 @@ interface StatCardProps {
 }
 
 export function StatCard({ label, value, delta, icon: Icon, href, loading, error }: StatCardProps) {
+  const cardClassName = "bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700";
+
   if (loading) {
     const skeleton = (
       <div className="animate-pulse">
@@ -30,11 +32,8 @@ export function StatCard({ label, value, delta, icon: Icon, href, loading, error
       </div>
     );
 
-    const cardClassName = "bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700";
     return <div className={cardClassName}>{skeleton}</div>;
   }
-
-  const cardClassName = "bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700";
 
   if (error) {
     return (
@@ -91,8 +90,6 @@ export function StatCard({ label, value, delta, icon: Icon, href, loading, error
       </div>
     </>
   );
-
-  const cardClassName = "bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700";
 
   if (href) {
     return (

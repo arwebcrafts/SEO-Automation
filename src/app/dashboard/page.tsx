@@ -42,78 +42,78 @@ export default function DashboardPage() {
   const [hasGeneratedArticle, setHasGeneratedArticle] = useState(false);
   const [hasScheduledPost, setHasScheduledPost] = useState(false);
 
+  const fetchRecentAudits = async () => {
+    try {
+      const res = await fetch("/api/audit/history");
+      if (res.ok) {
+        const data = await res.json();
+        setRecentAudits(data.audits?.slice(0, 5) || []);
+        setHasDomain(data.audits?.length > 0);
+        setFetchError(null);
+      } else {
+        throw new Error(`Failed to load audit history (${res.status})`);
+      }
+    } catch (error) {
+      console.error("Error fetching recent audits:", error);
+      setFetchError("Could not load your dashboard data. Please refresh.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchContentStats = async () => {
+    try {
+      // Fetch draft count
+      const draftsRes = await fetch("/api/content/history?status=draft&limit=1");
+      if (draftsRes.ok) {
+        const draftsData = await draftsRes.json();
+        setContentDraftsCount(draftsData.total || draftsData.count || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching content drafts:", error);
+    }
+
+    try {
+      // Fetch scheduled posts count
+      const scheduledRes = await fetch("/api/scheduled-posts?status=scheduled&limit=1");
+      if (scheduledRes.ok) {
+        const scheduledData = await scheduledRes.json();
+        setScheduledPostsCount(scheduledData.total || scheduledData.count || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching scheduled posts:", error);
+    }
+  };
+
+  const fetchOnboardingStatus = async () => {
+    try {
+      const wpRes = await fetch("/api/wordpress");
+      if (wpRes.ok) {
+        const wpData = await wpRes.json();
+        setIsWordPressConnected(!!(wpData.siteUrl || wpData.connected));
+      }
+    } catch { /* silent — non-critical */ }
+
+    try {
+      const historyRes = await fetch("/api/content/history?limit=1");
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        const items = historyData.items || historyData.articles || [];
+        setHasGeneratedArticle(items.length > 0);
+      }
+    } catch { /* silent */ }
+
+    try {
+      const scheduledRes = await fetch("/api/scheduled-posts?limit=1");
+      if (scheduledRes.ok) {
+        const scheduledData = await scheduledRes.json();
+        const items = scheduledData.posts || scheduledData.items || [];
+        setHasScheduledPost(items.length > 0);
+      }
+    } catch { /* silent */ }
+  };
+
   useEffect(() => {
-    const fetchRecentAudits = async () => {
-      try {
-        const res = await fetch("/api/audit/history");
-        if (res.ok) {
-          const data = await res.json();
-          setRecentAudits(data.audits?.slice(0, 5) || []);
-          setHasDomain(data.audits?.length > 0);
-          setFetchError(null);
-        } else {
-          throw new Error(`Failed to load audit history (${res.status})`);
-        }
-      } catch (error) {
-        console.error("Error fetching recent audits:", error);
-        setFetchError("Could not load your dashboard data. Please refresh.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchContentStats = async () => {
-      try {
-        // Fetch draft count
-        const draftsRes = await fetch("/api/content/history?status=draft&limit=1");
-        if (draftsRes.ok) {
-          const draftsData = await draftsRes.json();
-          setContentDraftsCount(draftsData.total || draftsData.count || 0);
-        }
-      } catch (error) {
-        console.error("Error fetching content drafts:", error);
-      }
-
-      try {
-        // Fetch scheduled posts count
-        const scheduledRes = await fetch("/api/scheduled-posts?status=scheduled&limit=1");
-        if (scheduledRes.ok) {
-          const scheduledData = await scheduledRes.json();
-          setScheduledPostsCount(scheduledData.total || scheduledData.count || 0);
-        }
-      } catch (error) {
-        console.error("Error fetching scheduled posts:", error);
-      }
-    };
-
-    const fetchOnboardingStatus = async () => {
-      try {
-        const wpRes = await fetch("/api/wordpress");
-        if (wpRes.ok) {
-          const wpData = await wpRes.json();
-          setIsWordPressConnected(!!(wpData.siteUrl || wpData.connected));
-        }
-      } catch { /* silent — non-critical */ }
-
-      try {
-        const historyRes = await fetch("/api/content/history?limit=1");
-        if (historyRes.ok) {
-          const historyData = await historyRes.json();
-          const items = historyData.items || historyData.articles || [];
-          setHasGeneratedArticle(items.length > 0);
-        }
-      } catch { /* silent */ }
-
-      try {
-        const scheduledRes = await fetch("/api/scheduled-posts?limit=1");
-        if (scheduledRes.ok) {
-          const scheduledData = await scheduledRes.json();
-          const items = scheduledData.posts || scheduledData.items || [];
-          setHasScheduledPost(items.length > 0);
-        }
-      } catch { /* silent */ }
-    };
-
     if (isSignedIn) {
       fetchRecentAudits();
       fetchContentStats();
@@ -227,7 +227,7 @@ export default function DashboardPage() {
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Total Audits"
             value={recentAudits.length}
@@ -289,7 +289,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Quick Audit */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-indigo-600" />
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Activity */}
-          <div>
+          <div className="order-1 lg:order-2">
             <RecentActivity audits={recentAudits} loading={loading} />
           </div>
         </div>

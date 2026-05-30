@@ -137,6 +137,13 @@ export default function Sidebar({
       return [];
     }
   });
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme") as "light" | "dark" | "system";
+      return saved || "system";
+    }
+    return "system";
+  });
   const pathname = usePathname();
   const router = useRouter();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -154,6 +161,25 @@ export default function Sidebar({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isMobileOpen, onMobileClose]);
+
+  // Apply theme to document
+  useEffect(() => {
+    const root = document.documentElement;
+    const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+    if (isDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [theme]);
+
+  // Handle theme toggle
+  const handleThemeToggle = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
   
   const { 
     activeWebsite, 
@@ -420,31 +446,51 @@ export default function Sidebar({
         {/* User Menu (Bottom) */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
           {!isCollapsed && currentDomain ? (
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Quick Stats</span>
+            <>
+              <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Quick Stats</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400">Health Score</p>
+                    <p className="font-bold text-indigo-600">{healthScore ?? '--'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400">Content Gaps</p>
+                    <p className="font-bold text-amber-600">{contentGapsCount ?? '--'}</p>
+                  </div>
+                </div>
+                {currentDomain && (
+                  <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-slate-500 dark:text-slate-400 text-xs truncate" title={currentDomain}>
+                      {currentDomain}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400">Health Score</p>
-                  <p className="font-bold text-indigo-600">{healthScore ?? '--'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400">Content Gaps</p>
-                  <p className="font-bold text-amber-600">{contentGapsCount ?? '--'}</p>
-                </div>
+              <div className="mt-3 flex flex-col gap-1">
+                <button
+                  onClick={handleThemeToggle}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm"
+                  title="Toggle theme"
+                >
+                  {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                </button>
               </div>
-              {currentDomain && (
-                <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <p className="text-slate-500 dark:text-slate-400 text-xs truncate" title={currentDomain}>
-                    {currentDomain}
-                  </p>
-                </div>
-              )}
-            </div>
+            </>
           ) : (
             <div className="flex flex-col gap-1">
+              <button
+                onClick={handleThemeToggle}
+                className="flex items-center justify-center p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
               <Link
                 href="/settings"
                 className="flex items-center justify-center p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
