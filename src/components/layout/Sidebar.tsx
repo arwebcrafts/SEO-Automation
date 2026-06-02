@@ -79,7 +79,7 @@ const navSections: NavSection[] = [
     icon: Search,
     items: [
       { id: "audit-new", label: "New Audit", icon: Search, href: "/audits/new" },
-      { id: "audit-history", label: "History", icon: History, href: "/audits" },
+      { id: "audit-history", label: "History", icon: History, href: "/history" },
     ],
     collapsible: true,
   },

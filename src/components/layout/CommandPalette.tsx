@@ -68,7 +68,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
       label: "Audit History",
       icon: History,
       action: () => {
-        router.push("/audits");
+        router.push("/history");
         onClose();
       },
       category: "Pages",

@@ -13,6 +13,7 @@ import {
   Filter
 } from "lucide-react";
 import Link from "next/link";
+import SidebarLayout from "@/components/layout/SidebarLayout";
 
 interface Draft {
   id: string;
@@ -90,7 +91,8 @@ export default function DraftsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <SidebarLayout>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -248,6 +250,6 @@ export default function DraftsPage() {
           </div>
         )}
       </div>
-    </div>
+    </SidebarLayout>
   );
 }

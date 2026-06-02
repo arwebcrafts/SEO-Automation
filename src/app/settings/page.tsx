@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Settings as SettingsIcon, Key, User, Shield, Save, Loader2 } from "lucide-react";
+import SidebarLayout from "@/components/layout/SidebarLayout";
 
 export default function SettingsPage() {
   const [tab, setTab] = useState("profile");
@@ -20,7 +21,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-8">
+    <SidebarLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">Settings</h1>
         <div className="flex gap-6">
@@ -34,7 +36,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
             {tab === "profile" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-w-md">
                 <h2 className="font-semibold text-slate-900 dark:text-white">Profile Settings</h2>
                 <div><label className="text-sm font-medium text-slate-700 dark:text-slate-300">Name</label><input className="w-full mt-1 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700" /></div>
                 <div><label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label><input type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700" /></div>
@@ -42,7 +44,7 @@ export default function SettingsPage() {
               </div>
             )}
             {tab === "api-keys" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-w-md">
                 <h2 className="font-semibold text-slate-900 dark:text-white">API Keys (BYOK)</h2>
                 <p className="text-sm text-slate-500">Bring your own API keys for AI providers.</p>
                 <div className="space-y-3">
@@ -63,7 +65,7 @@ export default function SettingsPage() {
               </div>
             )}
             {tab === "security" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-w-md">
                 <h2 className="font-semibold text-slate-900 dark:text-white">Security</h2>
                 <p className="text-sm text-slate-500">Manage your account security settings. Authentication is handled by Clerk.</p>
               </div>
@@ -71,6 +73,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </SidebarLayout>
   );
 }

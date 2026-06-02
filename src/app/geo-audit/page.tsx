@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { MapPin, Search, BarChart3, Globe, ChevronRight, Loader2 } from "lucide-react";
+import SidebarLayout from "@/components/layout/SidebarLayout";
 
 export default function GeoAuditPage() {
   const [domain, setDomain] = useState("");
@@ -19,7 +20,8 @@ export default function GeoAuditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-8">
+    <SidebarLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">GEO Audit</h1>
         <p className="text-slate-500 mb-8">Analyze your local SEO performance by location</p>
@@ -63,6 +65,6 @@ export default function GeoAuditPage() {
           </div>
         )}
       </div>
-    </div>
+    </SidebarLayout>
   );
 }
