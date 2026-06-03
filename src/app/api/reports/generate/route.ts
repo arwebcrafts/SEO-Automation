@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         latestScore: recentAudits[0]?.overallScore || 0,
         trend: recentAudits.length > 1 ? (recentAudits[0]?.overallScore || 0) - (recentAudits[1]?.overallScore || 0) : 0,
       },
-      audits: recentAudits.map((a) => ({
+      audits: recentAudits.map((a: any) => ({
         id: a.id,
         date: a.createdAt,
         score: a.overallScore,

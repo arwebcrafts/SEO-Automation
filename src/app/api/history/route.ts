@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      history = audits.map(audit => ({
+      history = audits.map((audit: any) => ({
         id: `hist_${audit.id}`,
         domain: audit.domain,
         date: audit.createdAt.toISOString(),

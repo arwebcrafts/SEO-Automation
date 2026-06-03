@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       distinct: ["keyword"],
     });
 
-    const prevMap = new Map(previousData.map((r) => [r.keyword, r.position]));
+    const prevMap = new Map(previousData.map((r: any) => [r.keyword, r.position]));
 
     // Simulate rank tracking (in production, use SEO API)
     const results = await Promise.all(

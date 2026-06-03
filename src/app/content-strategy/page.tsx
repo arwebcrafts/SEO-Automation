@@ -842,14 +842,14 @@ export default function ContentStrategyPage() {
             {/* Action cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
-                onClick={() => setActiveView("analysis")}
+                onClick={() => router.push("/content-strategy?view=analysis")}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-6 text-left transition-colors"
               >
                 <h3 className="text-lg font-semibold mb-2">Run Analysis</h3>
                 <p className="text-sm text-indigo-100">Analyze your website content to identify gaps and opportunities</p>
               </button>
               <button
-                onClick={() => setActiveView("production")}
+                onClick={() => router.push("/content-strategy?view=production")}
                 className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg p-6 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <h3 className="text-lg font-semibold mb-2">Generate Content</h3>
@@ -943,7 +943,7 @@ export default function ContentStrategyPage() {
           isLoading={isLoading}
           onRefresh={handleRefreshAnalysis}
           onGenerateContent={handleGenerateFromGap}
-          onOpenPlanner={() => setActiveView("planner")}
+          onOpenPlanner={() => router.push("/content-strategy?view=planner")}
         />
 
         {/* Right-side navigation sidebar for dashboard sections */}

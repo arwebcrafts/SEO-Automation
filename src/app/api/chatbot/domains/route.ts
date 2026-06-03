@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const user = await requireAuth();
     const configs = await prisma.chatbotConfig.findMany({ where: { userId: user.id } });
-    const domains = configs.map((c) => ({ siteId: c.siteId, domains: c.allowedDomains }));
+    const domains = configs.map((c: any) => ({ siteId: c.siteId, domains: c.allowedDomains }));
     return NextResponse.json({ domains });
   } catch (error: unknown) {
     return handleApiError(error, "Failed to fetch domains");

@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      users: users.map((user) => ({
+      users: users.map((user: any) => ({
         id: user.id,
         email: user.email,
         name: user.name,

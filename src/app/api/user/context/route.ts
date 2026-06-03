@@ -61,7 +61,7 @@ export async function GET() {
     // Get active client details
     let activeClient = null;
     if (userData.activeClientId && clients.length > 0) {
-      activeClient = clients.find((c) => c.id === userData.activeClientId) || null;
+      activeClient = clients.find((c: any) => c.id === userData.activeClientId) || null;
     }
     
     // If no active client but has clients, default to first one

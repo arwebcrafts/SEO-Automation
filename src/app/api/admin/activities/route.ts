@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      activities: activities.map((activity) => ({
+      activities: activities.map((activity: any) => ({
         id: activity.id,
         action: activity.action,
         entityType: activity.entityType,
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
       stats: {
-        actionBreakdown: actionStats.reduce((acc: any, stat) => {
+        actionBreakdown: actionStats.reduce((acc: any, stat: any) => {
           acc[stat.action] = stat._count.action;
           return acc;
         }, {}),

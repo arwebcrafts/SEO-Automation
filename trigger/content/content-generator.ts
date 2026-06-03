@@ -124,7 +124,13 @@ export const contentGeneratorTask = task({
           return generatedContent;
           
         } catch (error) {
-          logger.error(`Failed to generate content for ${combination.topic.title} (${combination.location}):`, { error: String(error) });
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
+          logger.error(`Failed to generate content for ${combination.topic.title} (${combination.location}):`, { 
+            error: errorMessage,
+            stack: errorStack,
+            combination: JSON.stringify(combination).substring(0, 500)
+          });
           
           return {
             id: `content_${Date.now()}_${globalIndex}`,

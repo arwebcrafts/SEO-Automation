@@ -10,7 +10,7 @@ export async function GET() {
     const user = await requireAuth();
     const keys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
     return NextResponse.json({
-      keys: keys.map((k) => ({ id: k.id, provider: k.provider, label: k.label, maskedKey: maskKey(decrypt(k.encryptedKey)), isActive: k.isActive, lastUsedAt: k.lastUsedAt, createdAt: k.createdAt })),
+      keys: keys.map((k: any) => ({ id: k.id, provider: k.provider, label: k.label, maskedKey: maskKey(decrypt(k.encryptedKey)), isActive: k.isActive, lastUsedAt: k.lastUsedAt, createdAt: k.createdAt })),
     });
   } catch (error: unknown) {
     return handleApiError(error, "Failed to fetch keys");
