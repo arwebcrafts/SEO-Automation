@@ -160,20 +160,23 @@ const SectionNav = ({
   };
 
   return (
-    <div className="hidden lg:block sticky top-24 w-48 flex-shrink-0">
-      <nav className="space-y-1">
+    <div className="hidden lg:block sticky top-24 w-56 flex-shrink-0 z-10">
+      <nav className="space-y-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3">
         {sections.map((section) => (
           <button
             key={section.id}
             onClick={() => scrollToSection(section.id)}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-left ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-all duration-200 text-left ${
               activeSection === section.id
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-medium"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                ? "bg-blue-600 text-white font-medium shadow-md transform scale-105"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
             }`}
           >
-            <section.icon className="w-4 h-4" />
+            <section.icon className={`w-5 h-5 ${activeSection === section.id ? "text-white" : ""}`} />
             {section.label}
+            {activeSection === section.id && (
+              <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
+            )}
           </button>
         ))}
       </nav>
@@ -367,20 +370,45 @@ export default function ContentStrategyDashboardV2({
   }
 
   const { contentContext, aiSuggestions, pages, extractionData } = analysisOutput;
-  const totalPages = pages?.length || 0;
-  const totalWordCount = pages?.reduce((sum, page) => sum + (page.wordCount || 0), 0) || 0;
+  // Fix: Use extractionData as fallback if pages array is empty
+  const totalPages = pages?.length || extractionData?.extractedPages?.length || 0;
+  const totalWordCount = pages?.reduce((sum, page) => sum + (page.wordCount || 0), 0) || 
+                        extractionData?.totalWordCount || 0;
+  
+  // Debug logging for stats
+  console.log('[DashboardV2] Stats calculation:', {
+    pagesLength: pages?.length,
+    extractedPagesLength: extractionData?.extractedPages?.length,
+    totalPages,
+    totalWordCount,
+    extractionDataTotalWords: extractionData?.totalWordCount
+  });
 
   const servicePages = pages?.filter(p => {
     const typeLower = p.type?.toLowerCase() || '';
     const urlLower = p.url?.toLowerCase() || '';
-    return typeLower === 'service' || urlLower.includes('/services/');
+    return typeLower === 'service' || 
+           typeLower === 'services' ||
+           urlLower.includes('/services/') ||
+           urlLower.includes('/service-');
   }) || [];
 
   const blogPages = pages?.filter(p => {
     const typeLower = p.type?.toLowerCase() || '';
     const urlLower = p.url?.toLowerCase() || '';
-    return typeLower === 'blog' || urlLower.includes('/blog/');
+    return typeLower === 'blog' || 
+           typeLower === 'blogs' ||
+           urlLower.includes('/blog/') ||
+           urlLower.includes('/blogs/') ||
+           urlLower.includes('/post/');
   }) || [];
+  
+  // Debug logging for page counts
+  console.log('[DashboardV2] Page type counts:', {
+    servicePages: servicePages.length,
+    blogPages: blogPages.length,
+    totalPages
+  });
 
   const getFilteredPages = () => {
     let filtered = pages || [];
@@ -461,8 +489,8 @@ export default function ContentStrategyDashboardV2({
             </h2>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800 hover:scale-105 transition-transform duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -477,7 +505,7 @@ export default function ContentStrategyDashboardV2({
                 <p className="text-sm text-slate-600 dark:text-slate-400">Analyzed</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-4 border border-green-200 dark:border-green-800">
+              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-4 border border-green-200 dark:border-green-800 hover:scale-105 transition-transform duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-green-600" />
@@ -492,7 +520,7 @@ export default function ContentStrategyDashboardV2({
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Content</p>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800 hover:scale-105 transition-transform duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Target className="w-5 h-5 text-purple-600" />
@@ -507,7 +535,7 @@ export default function ContentStrategyDashboardV2({
                 <p className="text-sm text-slate-600 dark:text-slate-400">Identified</p>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-4 border border-amber-200 dark:border-amber-800 hover:scale-105 transition-transform duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
@@ -524,7 +552,7 @@ export default function ContentStrategyDashboardV2({
             </div>
 
             {/* Page Type Breakdown */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Service Pages</span>
@@ -676,15 +704,27 @@ export default function ContentStrategyDashboardV2({
                           <p className="text-slate-600 dark:text-slate-400">{keyword.pages} page{keyword.pages !== 1 ? 's' : ''}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            keyword.density === "High"
-                              ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
-                              : keyword.density === "Medium"
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                              : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                          }`}>
-                            {keyword.density}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                              keyword.density === "High"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                                : keyword.density === "Medium"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                                : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                            }`}>
+                              {keyword.density}
+                            </span>
+                            <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden w-24">
+                              <div 
+                                className={`h-full rounded-full transition-all ${
+                                  keyword.density === "High" ? "bg-red-500" :
+                                  keyword.density === "Medium" ? "bg-amber-500" : "bg-green-500"
+                                }`}
+                                style={{ width: keyword.density === "High" ? "90%" : 
+                                               keyword.density === "Medium" ? "60%" : "30%" }}
+                              />
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -711,7 +751,7 @@ export default function ContentStrategyDashboardV2({
             </div>
 
             {contentContext?.contentGaps && contentContext.contentGaps.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {contentContext.contentGaps.map((gap, index) => (
                   <div
                     key={index}
@@ -724,14 +764,29 @@ export default function ContentStrategyDashboardV2({
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
                         index < 2
                           ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
                           : index < 4
                           ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                          : "bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-300"
+                          : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
                       }`}>
-                        {index < 2 ? "High Priority" : index < 4 ? "Medium Priority" : "Low Priority"}
+                        {index < 2 ? (
+                          <>
+                            <AlertTriangle className="w-3 h-3" />
+                            High Priority
+                          </>
+                        ) : index < 4 ? (
+                          <>
+                            <Info className="w-3 h-3" />
+                            Medium Priority
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-3 h-3" />
+                            Low Priority
+                          </>
+                        )}
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">#{index + 1}</span>
                     </div>
@@ -782,19 +837,31 @@ export default function ContentStrategyDashboardV2({
               {/* Content Type Filter */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-slate-500 dark:text-slate-400">Filter by:</span>
-                {["all", "Blog Post", "Case Study", "Guide", "Whitepaper", "Infographic"].map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setContentTypeFilter(type as typeof contentTypeFilter)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      contentTypeFilter === type
-                        ? "bg-blue-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                    }`}
-                  >
-                    {type === "all" ? "All Types" : type}
-                  </button>
-                ))}
+                {["all", "Blog Post", "Case Study", "Guide", "Whitepaper", "Infographic"].map((type) => {
+                  const count = type === "all" 
+                    ? aiSuggestions?.length || 0 
+                    : aiSuggestions?.filter(s => s.type === type).length || 0;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setContentTypeFilter(type as typeof contentTypeFilter)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                        contentTypeFilter === type
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      {type === "all" ? "All Types" : type}
+                      <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+                        contentTypeFilter === type
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-400"
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -867,6 +934,32 @@ export default function ContentStrategyDashboardV2({
           </div>
         </section>
 
+        {/* Quick Actions CTA */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold mb-1">Ready to Create Content?</h2>
+              <p className="text-blue-100 text-sm">Use AI to generate articles based on your content gaps and suggestions</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={onOpenPlanner}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors font-medium"
+              >
+                <CalendarIcon className="w-4 h-4" />
+                Open Planner
+              </button>
+              <button
+                onClick={onRefresh}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Re-Analyze
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Analyzed Pages Section */}
         <section id="pages" className="scroll-mt-24">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
@@ -902,8 +995,17 @@ export default function ContentStrategyDashboardV2({
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {getFilteredPages().map((page, index) => (
+            {getFilteredPages().length === 0 ? (
+              <div className="text-center py-12">
+                <FileSearch className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600 dark:text-slate-400 mb-2">No pages analyzed yet</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500">
+                  Run an analysis to see detailed page breakdowns
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto overflow-x-auto">
+                {getFilteredPages().map((page, index) => (
                 <div
                   key={page.url}
                   className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden"
@@ -989,34 +1091,9 @@ export default function ContentStrategyDashboardV2({
                 </div>
               ))}
             </div>
+            )}
           </div>
         </section>
-
-        {/* Quick Actions Footer */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold mb-1">Ready to Create Content?</h2>
-              <p className="text-blue-100 text-sm">Use AI to generate articles based on your content gaps and suggestions</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={onOpenPlanner}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors font-medium"
-              >
-                <CalendarIcon className="w-4 h-4" />
-                Open Planner
-              </button>
-              <button
-                onClick={onRefresh}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Re-Analyze
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
