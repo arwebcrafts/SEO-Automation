@@ -88,12 +88,33 @@ export const contentGeneratorTask = task({
         logger.log(`Processing combination ${globalIndex + 1}/${payload.combinations.length}: ${combination.topic.title} for ${combination.location}`);
         
         try {
-          // Generate content, image, and YouTube search in parallel
-          const [content, imageUrl, youtubeVideo] = await Promise.all([
-            generateContentForCombination(enhancedCombination),
-            payload.generateImages ? generateImageForContent(enhancedCombination) : Promise.resolve(undefined),
-            enhancedCombination.includeYouTube ? searchYouTubeVideo(combination.topic.title, combination.topic.primaryKeywords) : Promise.resolve(undefined)
-          ]);
+          // Generate content first
+          const content = await generateContentForCombination(enhancedCombination);
+          
+          // Generate image and YouTube search in parallel, but don't fail if they error
+          let imageUrl: string | undefined;
+          let youtubeVideo: { videoId: string; title: string; thumbnail: string; embedUrl: string } | undefined;
+          
+          try {
+            const results = await Promise.allSettled([
+              payload.generateImages ? generateImageForContent(enhancedCombination) : Promise.resolve(undefined),
+              enhancedCombination.includeYouTube ? searchYouTubeVideo(combination.topic.title, combination.topic.primaryKeywords) : Promise.resolve(undefined)
+            ]);
+            
+            if (results[0].status === 'fulfilled') {
+              imageUrl = results[0].value;
+            } else {
+              logger.log(`[Image Generation] Failed, continuing without image: ${results[0].status === 'rejected' ? results[0].reason?.message || 'Unknown error' : 'Unknown error'}`);
+            }
+            
+            if (results[1].status === 'fulfilled') {
+              youtubeVideo = results[1].value;
+            } else {
+              logger.log(`[YouTube Search] Failed, continuing without video: ${results[1].status === 'rejected' ? results[1].reason?.message || 'Unknown error' : 'Unknown error'}`);
+            }
+          } catch (error) {
+            logger.log(`[Media Generation] Error during media generation, continuing without: ${error instanceof Error ? error.message : String(error)}`);
+          }
           
           // Convert content to proper HTML with featured image and YouTube embed
           const htmlContent = formatContentAsHTML(
@@ -263,28 +284,24 @@ async function generateImageForContent(combination: ContentCombination): Promise
   console.log("[OpenAI Image] Topic:", combination.topic.title);
   console.log("[OpenAI Image] Location:", combination.location);
   console.log("[OpenAI Image] Style:", imageStyle);
-  console.log("[OpenAI Image] Model: dall-e-3");
+  console.log("[OpenAI Image] Model: gpt-image-1-mini");
   console.log("\n[OpenAI Image] IMAGE PROMPT:");
   console.log(prompt);
   console.log("====================================================\n");
-  
+
   logger.log(`[OpenAI Debug] Sending image prompt for: ${combination.topic.title}`, {
     prompt: prompt.substring(0, 300) + "...",
-    model: "dall-e-3",
-    size: "1792x1024",
-    style: imageStyle
+    model: "gpt-image-1-mini",
+    size: "1536x1024",
+    quality: "low"
   });
-  
-  // Use natural style for watercolor, vivid for others
-  const dalleStyle = imageStyle === "watercolor" ? "natural" : "vivid";
-  
+
   const response = await openai.images.generate({
-    model: "dall-e-3",
+    model: "gpt-image-1-mini",
     prompt: prompt,
     n: 1,
-    size: "1792x1024", // Wide format for featured images
-    quality: "hd",
-    style: dalleStyle,
+    size: "1536x1024", // Wide format for featured images (landscape)
+    quality: "low",
   });
 
   if (!response.data?.[0]?.url) {

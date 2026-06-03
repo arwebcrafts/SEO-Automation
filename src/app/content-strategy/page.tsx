@@ -66,6 +66,12 @@ export default function ContentStrategyPage() {
 
   const [activeView, setActiveView] = useState(initialView);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+
+  // Sync activeView with URL search params
+  useEffect(() => {
+    const view = searchParams.get("view") || "analysis";
+    setActiveView(view);
+  }, [searchParams]);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [lastAnalyzedDate, setLastAnalyzedDate] = useState<Date | null>(null);
   const [analysisOutput, setAnalysisOutput] = useState<any>(null);

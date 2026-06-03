@@ -89,7 +89,6 @@ const navSections: NavSection[] = [
     icon: FileEdit,
     items: [
       { id: "content-dashboard", label: "Content Overview", icon: LayoutDashboard, href: "/content-strategy?view=analysis" },
-      { id: "strategy", label: "Strategy Hub", icon: BarChart3, href: "/content-strategy?view=analysis" },
       { id: "production", label: "Quick Writer", icon: Zap, href: "/content-strategy?view=production" },
       { id: "auto-pilot", label: "Auto Pilot", icon: Rocket, href: "/content-strategy?view=auto-pilot", badge: "New" },
       { id: "progress", label: "Progress", icon: TrendingUp, href: "/content-strategy?view=progress" },
