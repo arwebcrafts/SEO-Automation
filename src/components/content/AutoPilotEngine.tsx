@@ -421,6 +421,16 @@ export default function AutoPilotEngine() {
       }
     } catch (err) {
       console.error("Failed to load analysis data:", err);
+      // Set default analysis data if loading fails to prevent indefinite loading
+      setAnalysisData({
+        services: [],
+        locations: [],
+        aboutSummary: "",
+        targetAudience: "Business professionals",
+        brandTone: "professional",
+        dominantKeywords: [],
+        pages: [],
+      });
     } finally {
       setIsLoadingAnalysis(false);
     }

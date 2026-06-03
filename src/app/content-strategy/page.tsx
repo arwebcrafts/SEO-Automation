@@ -866,6 +866,33 @@ export default function ContentStrategyPage() {
     const totalWordCount = pagesData.reduce((sum: number, p: any) => sum + (p.wordCount || 0), 0);
     const avgWordCount = pagesData.length > 0 ? Math.round(totalWordCount / pagesData.length) : 0;
 
+    // Calculate health score consistently
+    const calculateHealthScore = (avgWords: number, gaps: number, keywords: number, pages: number): number => {
+      let baseScore = 50;
+      
+      if (avgWords >= 1500) baseScore += 20;
+      else if (avgWords >= 800) baseScore += 10;
+      else if (avgWords < 300) baseScore -= 10;
+      
+      if (gaps === 0) baseScore += 15;
+      else if (gaps <= 3) baseScore += 5;
+      else if (gaps > 5) baseScore -= 10;
+      
+      if (keywords >= 10) baseScore += 15;
+      else if (keywords >= 5) baseScore += 8;
+      
+      if (pages >= 10) baseScore += 5;
+      
+      return Math.max(0, Math.min(100, baseScore));
+    };
+
+    const healthScore = calculateHealthScore(
+      avgWordCount,
+      contentContext.contentGaps?.length || 0,
+      contentContext.dominantKeywords?.length || 0,
+      pagesData.length
+    );
+
     return (
       <div className="py-8 space-y-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">
@@ -875,6 +902,7 @@ export default function ContentStrategyPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Health Score */}
           <SEOHealthScore
+            score={healthScore}
             totalPages={pagesData.length}
             avgWordCount={avgWordCount}
             contentGapsCount={contentContext.contentGaps?.length || 0}
